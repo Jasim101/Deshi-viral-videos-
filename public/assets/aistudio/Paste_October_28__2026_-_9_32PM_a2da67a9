@@ -1,0 +1,556 @@
+mkdir -p /home/claude/fun-hub-admin/public && cd /home/claude/fun-hub-admin && cat > package.json <<'EOF'
+{ "name": "fun-hub", "version": "1.0.0", "private": true, "scripts": { "start": "node server.js" }, "engines": { "node": ">=18" } }
+EOF
+cat > default-config.json <<'EOF'
+{
+  "appName": "ফান হাব", "logo": "♥", "premiumLabel": "প্রিমিয়াম",
+  "notice": "📢 স্বাগতম! বিজ্ঞাপন দেখে ফুল এইচডি ভিডিও উপভোগ করুন",
+  "searchPlaceholder": "ভিডিও খুঁজুন...", "emptyText": "কোনো ভিডিও পাওয়া যায়নি",
+  "theme": { "bg": "#14061f", "card": "#1f0b31", "line": "#4a2060", "text": "#f3e9fb", "mute": "#a58bb8", "accent1": "#ec2b8a", "accent2": "#b02bec", "gold": "#f5b94a" },
+  "tabs": [
+    { "label": "ভিডিও", "icon": "▶", "type": "videos" },
+    { "label": "চ্যাট পেজ", "icon": "💬", "type": "links", "title": "চ্যাট পেজ", "items": [
+      { "title": "😂 ফানি ক্লিপ গ্রুপ", "url": "https://t.me/your_group_1", "button": "জয়েন" },
+      { "title": "🎭 নাটক আলোচনা", "url": "https://t.me/your_group_2", "button": "জয়েন" } ] },
+    { "label": "আমাদের কথা", "icon": "ℹ", "type": "page", "title": "আমাদের সম্পর্কে", "text": "এখানে আপনার চ্যানেল বা অ্যাপ সম্পর্কে লিখুন।" }
+  ],
+  "categories": ["সবগুলো", "ফানি", "নাটক", "প্র্যাঙ্ক"],
+  "ads": { "provider": "demo", "demoSeconds": 5, "blockId": "", "lockedLabel": "Ads", "unlockTitle": "🔒 ভিডিও আনলক করুন", "unlockText": "আরও {n}টি বিজ্ঞাপন দেখলে ভিডিওটি চালু হবে।", "watchButton": "বিজ্ঞাপন দেখুন", "cancelButton": "বাতিল" },
+  "videos": [
+    { "id": "v1", "title": "অফিসে বসের সামনে হাসির কাণ্ড 😂", "cat": "ফানি", "dur": "03:24", "views": 2617, "likes": 228, "ads": 5, "src": "", "thumb": "" },
+    { "id": "v2", "title": "পরিবারের নাটক: বাজারের ব্যাগ রহস্য 🎭", "cat": "নাটক", "dur": "08:10", "views": 1840, "likes": 174, "ads": 3, "src": "", "thumb": "" },
+    { "id": "v3", "title": "বন্ধুদের প্র্যাঙ্ক: ভুতুড়ে ঘর 👻", "cat": "প্র্যাঙ্ক", "dur": "05:42", "views": 3920, "likes": 410, "ads": 5, "src": "", "thumb": "" }
+  ]
+}
+EOF
+cat > server.js <<'EOF'
+// ফান হাব সার্ভার: কোনো বাইরের প্যাকেজ লাগে না, শুধু Node.js 18+
+const http = require("http"), fs = require("fs"), path = require("path"), crypto = require("crypto");
+const PORT = process.env.PORT || 3000;
+const ENV_PASS = process.env.ADMIN_PASSWORD || "";
+const PASS = ENV_PASS || "admin123";
+const DATA = path.resolve(process.env.DATA_DIR || path.join(__dirname, "data"));
+const MAX = (+process.env.MAX_UPLOAD_MB || 500) * 1048576;
+const UP = path.join(DATA, "uploads"), CFG = path.join(DATA, "config.json"), STATS = path.join(DATA, "stats.json");
+const PUB = path.join(__dirname, "public");
+fs.mkdirSync(UP, { recursive: true });
+if (!fs.existsSync(CFG)) fs.copyFileSync(path.join(__dirname, "default-config.json"), CFG);
+const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".json": "application/json", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp" };
+const ALLOWED = [".mp4", ".webm", ".mov", ".jpg", ".jpeg", ".png", ".webp"];
+const SECRET = crypto.createHash("sha256").update("fh:" + PASS).digest();
+
+const readJSON = (f, d) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch (e) { return d; } };
+const writeJSON = (f, o) => { const t = f + ".tmp"; fs.writeFileSync(t, JSON.stringify(o, null, 2)); fs.renameSync(t, f); };
+let stats = readJSON(STATS, {}), statsDirty = false;
+setInterval(() => { if (statsDirty) { statsDirty = false; writeJSON(STATS, stats); } }, 5000);
+
+const sign = exp => crypto.createHmac("sha256", SECRET).update(String(exp)).digest("hex");
+const authed = req => {
+  const [exp, sig] = (req.headers.authorization || "").replace("Bearer ", "").split(".");
+  if (!exp || !sig || +exp < Date.now()) return false;
+  const ok = sign(exp);
+  return sig.length === ok.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(ok));
+};
+const send = (res, code, obj) => { res.writeHead(code, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); };
+const body = (req, limit = 2e6) => new Promise((ok, no) => {
+  let s = "";
+  req.on("data", c => { s += c; if (s.length > limit) { no(new Error("big")); req.destroy(); } });
+  req.on("end", () => { try { ok(JSON.parse(s || "{}")); } catch (e) { no(e); } });
+  req.on("error", no);
+});
+const fails = {}, seen = {};
+const ipOf = req => (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim();
+
+function serveFile(req, res, file, cache) {
+  fs.stat(file, (err, st) => {
+    if (err || !st.isFile()) { res.writeHead(404); return res.end("Not found"); }
+    const h = { "Content-Type": MIME[path.extname(file).toLowerCase()] || "application/octet-stream", "Accept-Ranges": "bytes", "Cache-Control": cache, "X-Content-Type-Options": "nosniff" };
+    const m = /bytes=(\d*)-(\d*)/.exec(req.headers.range || "");
+    if (m) {
+      let s = m[1] ? +m[1] : 0, e = m[2] ? +m[2] : st.size - 1;
+      if (!m[1] && m[2]) { s = Math.max(0, st.size - +m[2]); e = st.size - 1; }
+      if (e >= st.size) e = st.size - 1;
+      if (s > e || s >= st.size) { res.writeHead(416, { "Content-Range": "bytes */" + st.size }); return res.end(); }
+      res.writeHead(206, { ...h, "Content-Range": `bytes ${s}-${e}/${st.size}`, "Content-Length": e - s + 1 });
+      return fs.createReadStream(file, { start: s, end: e }).pipe(res);
+    }
+    res.writeHead(200, { ...h, "Content-Length": st.size });
+    fs.createReadStream(file).pipe(res);
+  });
+}
+
+http.createServer(async (req, res) => {
+  const u = new URL(req.url, "http://x"), p = u.pathname;
+  try {
+    if (p === "/api/config" && req.method === "GET") {
+      const c = readJSON(CFG, {});
+      (c.videos || []).forEach(v => { const s = stats[v.id] || {}; v.views = (+v.views || 0) + (s.views || 0); v.likes = (+v.likes || 0) + (s.likes || 0); });
+      res.setHeader("Cache-Control", "no-store");
+      return send(res, 200, c);
+    }
+    if (p === "/api/login" && req.method === "POST") {
+      const ip = ipOf(req), f = fails[ip] || { n: 0, until: 0 };
+      if (Date.now() < f.until) return send(res, 429, { error: "অনেকবার ভুল হয়েছে, ১ মিনিট পরে চেষ্টা করুন" });
+      const host = (req.headers.host || "").split(":")[0];
+      if (!ENV_PASS && host !== "localhost" && host !== "127.0.0.1") return send(res, 403, { error: "সার্ভারে ADMIN_PASSWORD সেট করুন, তারপর লগইন হবে" });
+      const { password } = await body(req);
+      const a = crypto.createHash("sha256").update(String(password || "")).digest(), b = crypto.createHash("sha256").update(PASS).digest();
+      if (!crypto.timingSafeEqual(a, b)) { f.n++; if (f.n >= 5) { f.n = 0; f.until = Date.now() + 60000; } fails[ip] = f; return send(res, 401, { error: "পাসওয়ার্ড ভুল" }); }
+      fails[ip] = { n: 0, until: 0 };
+      const exp = Date.now() + 7 * 864e5;
+      return send(res, 200, { token: exp + "." + sign(exp) });
+    }
+    if (p === "/api/stat" && req.method === "POST") {
+      const { id, type } = await body(req, 1000);
+      const c = readJSON(CFG, {});
+      if (!["view", "like"].includes(type) || !(c.videos || []).some(v => v.id === id)) return send(res, 400, { error: "bad" });
+      const k = ipOf(req) + id + type;
+      if (seen[k] && Date.now() - seen[k] < 36e5) return send(res, 200, { ok: true });
+      seen[k] = Date.now();
+      const s = stats[id] || (stats[id] = {});
+      s[type + "s"] = (s[type + "s"] || 0) + 1; statsDirty = true;
+      return send(res, 200, { ok: true });
+    }
+    if (p.startsWith("/api/admin/") || p === "/api/upload") {
+      if (!authed(req)) return send(res, 401, { error: "login" });
+    }
+    if (p === "/api/admin/config" && req.method === "GET") return send(res, 200, readJSON(CFG, {}));
+    if (p === "/api/admin/config" && req.method === "PUT") {
+      const { config: c, removed } = await body(req);
+      if (!c || typeof c !== "object" || !Array.isArray(c.tabs) || !Array.isArray(c.categories) || !Array.isArray(c.videos) || typeof c.theme !== "object" || typeof c.ads !== "object") return send(res, 400, { error: "কনফিগ ঠিক নেই" });
+      for (const v of Object.values(c.theme)) if (!/^#[0-9a-f]{6}$/i.test(v)) return send(res, 400, { error: "রঙের কোড ঠিক নেই" });
+      c.videos.forEach(v => { if (!v.id) v.id = "v" + crypto.randomBytes(4).toString("hex"); });
+      writeJSON(CFG, c);
+      const used = JSON.stringify(c);
+      (Array.isArray(removed) ? removed : []).forEach(r => {
+        const n = path.basename(String(r));
+        if (String(r).startsWith("/uploads/") && !used.includes("/uploads/" + n)) fs.unlink(path.join(UP, n), () => {});
+      });
+      return send(res, 200, { ok: true });
+    }
+    if (p === "/api/upload" && req.method === "POST") {
+      const ext = path.extname(u.searchParams.get("name") || "").toLowerCase();
+      if (!ALLOWED.includes(ext)) return send(res, 400, { error: "এই ফাইল ধরন চলবে না (mp4, webm, mov, jpg, png, webp)" });
+      if ((+req.headers["content-length"] || 0) > MAX) return send(res, 413, { error: "ফাইল অনেক বড়" });
+      const fn = crypto.randomBytes(8).toString("hex") + ext, fp = path.join(UP, fn), ws = fs.createWriteStream(fp);
+      let size = 0, bad = false;
+      req.on("data", ch => { size += ch.length; if (size > MAX && !bad) { bad = true; req.unpipe(ws); ws.destroy(); fs.unlink(fp, () => {}); send(res, 413, { error: "ফাইল অনেক বড়" }); } });
+      req.on("aborted", () => { ws.destroy(); fs.unlink(fp, () => {}); });
+      req.pipe(ws);
+      ws.on("finish", () => { if (!bad) send(res, 200, { url: "/uploads/" + fn }); });
+      ws.on("error", () => { if (!res.headersSent) send(res, 500, { error: "সেভ করা যায়নি" }); });
+      return;
+    }
+    if (p.startsWith("/uploads/")) return serveFile(req, res, path.join(UP, path.basename(p)), "public, max-age=31536000, immutable");
+    if (p === "/admin" || p === "/admin/") return serveFile(req, res, path.join(PUB, "admin.html"), "no-cache");
+    const f = path.join(PUB, p === "/" ? "index.html" : path.normalize(p));
+    if (!f.startsWith(PUB)) { res.writeHead(403); return res.end(); }
+    return serveFile(req, res, f, "no-cache");
+  } catch (e) {
+    if (!res.headersSent) send(res, 400, { error: "bad request" });
+  }
+}).listen(PORT, () => {
+  console.log("চালু হয়েছে: http://localhost:" + PORT + "  |  অ্যাডমিন: /admin");
+  if (!ENV_PASS) console.log("⚠ ADMIN_PASSWORD সেট করা নেই: শুধু localhost-এ লগইন চলবে (পাসওয়ার্ড admin123)");
+});
+EOF
+cat > public/index.html <<'EOF'
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fun Hub</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header><div class="logo" id="logo"></div><div class="prem" id="prem"></div></header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<div class="modal" id="modal"><div class="box" id="box"></div></div>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- Adsgram ব্যবহার করলে নিচের লাইনের কমেন্ট তুলুন -->
+<!-- <script src="https://sad.adsgram.ai/js/sad.min.js"></script> -->
+<script src="app.js"></script>
+</body>
+</html>
+EOF
+cat > public/style.css <<'EOF'
+:root{--bg:#14061f;--card:#1f0b31;--line:#4a2060;--text:#f3e9fb;--mute:#a58bb8;--accent1:#ec2b8a;--accent2:#b02bec;--gold:#f5b94a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans Bengali",sans-serif;padding-top:env(safe-area-inset-top,0px);padding-bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+.logo{font-size:22px;font-weight:700;color:var(--accent1)}
+.prem{color:var(--gold);font-size:14px}
+.wrap{padding:14px 16px}
+.notice{border:1px solid var(--line);border-radius:16px;padding:12px 14px;background:var(--card);font-size:14px}
+.search{display:flex;margin:14px 0;border:1px solid var(--line);border-radius:24px;padding:0 16px;background:var(--card)}
+.search input{flex:1;background:none;border:0;color:var(--text);padding:13px 0;font-size:15px;outline:none;font-family:inherit}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+.chip{white-space:nowrap;border:1px solid var(--line);background:none;color:var(--mute);border-radius:20px;padding:8px 16px;font-family:inherit;font-size:14px}
+.chip.on{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff;border-color:transparent}
+.vid{margin-top:16px;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:var(--card)}
+.thumb{position:relative;height:190px;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center}
+.play{width:56px;height:56px;border-radius:50%;background:var(--accent1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px}
+.lock{position:absolute;top:10px;left:10px;background:#1a0a28;color:var(--gold);border:1px solid var(--gold);border-radius:10px;padding:4px 10px;font-size:13px}
+.dur{position:absolute;right:10px;bottom:10px;background:#000;color:#fff;border-radius:8px;padding:3px 9px;font-size:13px}
+.info{padding:12px 14px}
+.title{font-weight:600;font-size:15px;line-height:1.4}
+.meta{display:flex;justify-content:space-between;color:var(--mute);font-size:13px;margin-top:8px}
+.meta .lk{cursor:pointer}.meta .lk.on{color:var(--accent1)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;color:var(--mute);padding:10px;font-family:inherit;font-size:13px}
+nav button.on{color:var(--accent1)}
+nav span{display:block;font-size:20px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
+.modal.show{display:flex}
+.box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;width:100%;max-width:380px;text-align:center}
+.btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff;border:0;border-radius:24px;padding:12px 22px;font-family:inherit;font-size:15px;margin-top:12px}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--mute)}
+video{width:100%;border-radius:12px;background:#000;margin-top:10px}
+.row{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.row .btn{margin:0;padding:8px 16px}
+.empty{text-align:center;color:var(--mute);margin-top:40px}
+.page{line-height:1.7;white-space:pre-line}
+EOF
+cat > public/app.js <<'EOF'
+(async function () {
+  let C;
+  try { C = await (await fetch("/api/config")).json(); }
+  catch (e) { document.body.innerHTML = '<p style="padding:20px;color:#fff">লোড করা যায়নি, আবার চেষ্টা করুন</p>'; return; }
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { try { tg.ready(); tg.expand(); tg.setHeaderColor(C.theme.card); tg.setBackgroundColor(C.theme.bg); } catch (e) {} }
+  Object.keys(C.theme).forEach(k => document.documentElement.style.setProperty("--" + k, C.theme[k]));
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const safeUrl = u => /^(https?:\/\/|\/uploads\/)/i.test(u || "") ? u : "";
+  const ls = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "") || d; } catch (e) { return d; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const stat = (id, type) => fetch("/api/stat", { method: "POST", body: JSON.stringify({ id, type }) }).catch(() => {});
+
+  let tab = 0, cat = C.categories[0], unlocked = ls("unl", {}), liked = ls("liked", {}), progress = {};
+  document.title = C.appName;
+  $("logo").textContent = C.logo + " " + C.appName;
+  $("prem").textContent = C.premiumLabel || "";
+
+  window.__openLink = url => {
+    if (!safeUrl(url)) return;
+    if (tg && /^https?:\/\/t\.me\//i.test(url)) tg.openTelegramLink(url);
+    else if (tg) tg.openLink(url);
+    else window.open(url, "_blank");
+  };
+  function renderNav() {
+    $("nav").innerHTML = C.tabs.map((t, i) => `<button class="${i === tab ? "on" : ""}" onclick="__tab(${i})"><span>${esc(t.icon)}</span>${esc(t.label)}</button>`).join("");
+  }
+  window.__tab = i => { tab = i; renderNav(); renderTab(); window.scrollTo(0, 0); };
+  function renderTab() {
+    const t = C.tabs[tab], m = $("main");
+    if (!t) { m.innerHTML = ""; return; }
+    if (t.type === "videos") {
+      m.innerHTML = `<div class="wrap">${C.notice ? `<div class="notice">${esc(C.notice)}</div>` : ""}
+        <div class="search"><input id="q" placeholder="${esc(C.searchPlaceholder)}"><span style="align-self:center">🔍</span></div>
+        <div class="chips" id="chips"></div><div id="list"></div></div>`;
+      $("q").addEventListener("input", renderList); renderChips(); renderList();
+    } else if (t.type === "links") {
+      m.innerHTML = `<div class="wrap"><h3>${esc(t.title || t.label)}</h3>` + (t.items || []).map(it =>
+        `<div class="row"><span>${esc(it.title)}</span><button class="btn" onclick="__openLink('${esc(it.url)}')">${esc(it.button || "খুলুন")}</button></div>`).join("") + "</div>";
+    } else {
+      m.innerHTML = `<div class="wrap"><h3>${esc(t.title || t.label)}</h3><div class="page">${esc(t.text)}</div></div>`;
+    }
+  }
+  function renderChips() {
+    $("chips").innerHTML = C.categories.map(c => `<button class="chip ${c === cat ? "on" : ""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
+    document.querySelectorAll(".chip").forEach(b => b.onclick = () => { cat = b.dataset.c; renderChips(); renderList(); });
+  }
+  const need = v => Math.max(0, (+v.ads || 0) - (progress[v.id] || 0));
+  const isOpen = v => !(+v.ads) || unlocked[v.id];
+  const byId = id => C.videos.find(v => v.id === id);
+  function renderList() {
+    if (!$("list")) return;
+    const q = ($("q").value || "").trim().toLowerCase();
+    const html = C.videos.filter(v => (cat === C.categories[0] || v.cat === cat) && v.title.toLowerCase().includes(q)).map(v => {
+      const bg = safeUrl(v.thumb) ? `background-image:url('${esc(v.thumb)}')` : "background-image:linear-gradient(135deg,var(--accent2),var(--accent1))";
+      const lock = isOpen(v) ? "" : `<div class="lock">🔒 ${need(v)} ${esc(C.ads.lockedLabel)}</div>`;
+      return `<div class="vid" onclick="__open('${esc(v.id)}')"><div class="thumb" style="${bg}">${lock}<div class="play">▶</div><div class="dur">${esc(v.dur)}</div></div>
+        <div class="info"><div class="title">${esc(v.title)}</div><div class="meta"><span>👁 ${Number(v.views || 0).toLocaleString()} ভিউ</span>
+        <span class="lk ${liked[v.id] ? "on" : ""}" onclick="event.stopPropagation();__like('${esc(v.id)}')">${liked[v.id] ? "♥" : "♡"} ${Number(v.likes || 0)}</span></div></div></div>`;
+    }).join("");
+    $("list").innerHTML = html || `<div class="empty">${esc(C.emptyText)}</div>`;
+  }
+  window.__like = id => { const v = byId(id); if (!v || liked[id]) return; liked[id] = 1; lsSet("liked", liked); v.likes = (+v.likes || 0) + 1; stat(id, "like"); renderList(); };
+
+  const show = h => { $("box").innerHTML = h; $("modal").classList.add("show"); };
+  window.__close = () => $("modal").classList.remove("show");
+  window.__open = id => { const v = byId(id); if (!v) return; isOpen(v) ? play(v) : ask(v); };
+  function ask(v) {
+    const a = C.ads;
+    show(`<h3>${esc(a.unlockTitle)}</h3><p>${esc(a.unlockText.replace("{n}", need(v)))}</p>
+      <button class="btn" onclick="__ad('${esc(v.id)}')">${esc(a.watchButton)}</button><br><button class="btn ghost" onclick="__close()">${esc(a.cancelButton)}</button>`);
+  }
+  function showAd() {
+    return new Promise(res => {
+      const a = C.ads;
+      if (a.provider === "adsgram" && window.Adsgram) { window.Adsgram.init({ blockId: a.blockId }).show().then(() => res(true)).catch(() => res(false)); return; }
+      let s = +a.demoSeconds || 5;
+      show(`<h3>বিজ্ঞাপন চলছে...</h3><p style="font-size:40px;margin:10px 0" id="cd">${s}</p>`);
+      const t = setInterval(() => { s--; const el = $("cd"); if (el) el.textContent = s; if (s <= 0) { clearInterval(t); res(true); } }, 1000);
+    });
+  }
+  window.__ad = async id => {
+    const v = byId(id); if (!v) return;
+    if (!(await showAd())) { ask(v); return; }
+    progress[id] = (progress[id] || 0) + 1;
+    if (need(v) <= 0) { unlocked[id] = true; lsSet("unl", unlocked); renderList(); play(v); } else { renderList(); ask(v); }
+  };
+  function play(v) {
+    const media = safeUrl(v.src) ? `<video src="${esc(v.src)}" controls autoplay playsinline></video>` : '<p style="color:var(--mute)">এই ভিডিওর ফাইল এখনো যোগ করা হয়নি</p>';
+    show(`<h3>${esc(v.title)}</h3>${media}<button class="btn" onclick="__close()">বন্ধ করুন</button>`);
+    v.views = (+v.views || 0) + 1; stat(v.id, "view"); renderList();
+  }
+  renderNav(); renderTab();
+})();
+EOF
+cat > public/admin.html <<'EOF'
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>অ্যাডমিন প্যানেল</title>
+<style>
+:root{--bg:#0f1016;--card:#1a1b26;--line:#33354a;--text:#eceef8;--mute:#8f93ad;--ac:#ec2b8a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,"Noto Sans Bengali",sans-serif;padding-bottom:90px}
+.top{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.top b{font-size:17px}.top a,.top button{color:var(--mute);font-size:13px;background:none;border:0;text-decoration:none;margin-left:10px}
+#tabs{display:flex;gap:6px;overflow-x:auto;padding:10px 14px}
+#tabs button{white-space:nowrap;background:var(--card);border:1px solid var(--line);color:var(--mute);border-radius:18px;padding:8px 14px;font-family:inherit}
+#tabs button.on{background:var(--ac);border-color:var(--ac);color:#fff}
+#body{padding:0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+.sub{border-left:3px solid var(--ac);padding-left:10px;margin-top:10px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.bar button,.row2 button{background:#262838;border:1px solid var(--line);color:var(--text);border-radius:8px;padding:5px 9px;margin-left:4px}
+.bar .del,.del{color:#ff6b7a}
+label{display:block;font-size:13px;color:var(--mute);margin-top:9px}
+input,select,textarea{display:block;width:100%;margin-top:4px;background:#0f1016;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:10px;font-size:15px;font-family:inherit}
+input[type=color]{height:42px;padding:3px}textarea{min-height:90px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.add{width:100%;margin-top:12px;padding:12px;border:1px dashed var(--ac);background:none;color:var(--ac);border-radius:12px;font-family:inherit;font-size:15px}
+.up{display:inline-block;margin-top:8px;padding:8px 12px;background:#262838;border:1px solid var(--line);border-radius:10px;color:var(--text);font-size:14px}
+.row2{display:flex;gap:6px;margin-top:10px;align-items:center}.row2 input{margin:0}
+.mute{color:var(--mute);font-size:13px}
+img.th{height:70px;border-radius:8px;margin-top:8px;display:block}
+.save{position:fixed;left:0;right:0;bottom:0;padding:12px 14px;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:center;gap:12px}
+.save button{background:var(--ac);color:#fff;border:0;border-radius:12px;padding:12px 26px;font-size:16px;font-family:inherit}
+#login{max-width:340px;margin:18vh auto;padding:20px}
+#login button{width:100%;margin-top:12px;background:var(--ac);color:#fff;border:0;border-radius:12px;padding:12px;font-size:16px;font-family:inherit}
+</style>
+</head>
+<body>
+<div id="login" style="display:none">
+  <h2>🔐 অ্যাডমিন লগইন</h2>
+  <input id="pw" type="password" placeholder="পাসওয়ার্ড" onkeydown="if(event.key==='Enter')login()">
+  <button onclick="login()">লগইন</button>
+  <p id="lerr" style="color:#ff6b7a"></p>
+</div>
+<div id="app" style="display:none">
+  <div class="top"><b>⚙ অ্যাডমিন প্যানেল</b><span><a href="/" target="_blank">অ্যাপ দেখুন</a><button onclick="logout()">লগআউট</button></span></div>
+  <div id="tabs"></div><div id="body"></div>
+  <div class="save"><button onclick="save()">💾 সেভ করুন</button><span id="st" class="mute"></span></div>
+</div>
+<script src="admin.js"></script>
+</body>
+</html>
+EOF
+cat > public/admin.js <<'EOF'
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+let cfg, token = localStorage.getItem("tk") || "", removed = [], sec = "general";
+const SECS = [["general", "🎨 সাধারণ ও রঙ"], ["menu", "📑 মেনু"], ["cats", "🏷 ক্যাটাগরি"], ["videos", "🎬 ভিডিও"], ["ads", "💰 বিজ্ঞাপন"]];
+const get = (o, p) => p.split(".").reduce((a, k) => a == null ? a : a[k], o);
+const set = (o, p, v) => { const ks = p.split("."), l = ks.pop(); let t = o; ks.forEach(k => t = t[k]); t[l] = v; };
+const arr = p => { let a = get(cfg, p); if (!a) { set(cfg, p, []); a = get(cfg, p); } return a; };
+const dirty = () => $("#st").textContent = "● সেভ করা হয়নি";
+
+async function api(p, o = {}) {
+  o.headers = Object.assign({ Authorization: "Bearer " + token }, o.headers || {});
+  const r = await fetch(p, o);
+  if (r.status === 401) { logout(); throw new Error("401"); }
+  return r;
+}
+async function login() {
+  const r = await fetch("/api/login", { method: "POST", body: JSON.stringify({ password: $("#pw").value }) });
+  const j = await r.json();
+  if (!r.ok) { $("#lerr").textContent = j.error || "ভুল"; return; }
+  token = j.token; localStorage.setItem("tk", token); start();
+}
+function logout() { token = ""; localStorage.removeItem("tk"); $("#app").style.display = "none"; $("#login").style.display = "block"; }
+async function start() {
+  if (!token) return logout();
+  try { cfg = await (await api("/api/admin/config")).json(); } catch (e) { return; }
+  $("#login").style.display = "none"; $("#app").style.display = "block"; render();
+}
+const F = (l, p, t = "text", x = "") => `<label>${l}<input type="${t}" data-p="${p}" value="${esc(get(cfg, p))}" ${x}></label>`;
+const T = (l, p) => `<label>${l}<textarea data-p="${p}">${esc(get(cfg, p))}</textarea></label>`;
+const S = (l, p, opts, re) => `<label>${l}<select data-p="${p}" ${re ? 'onchange="render()"' : ""}>${opts.map(([v, n]) => `<option value="${esc(v)}" ${get(cfg, p) === v ? "selected" : ""}>${esc(n)}</option>`).join("")}</select></label>`;
+const btns = (p, i) => `<button onclick="mv('${p}',${i},-1)">↑</button><button onclick="mv('${p}',${i},1)">↓</button><button class="del" onclick="del('${p}',${i})">🗑</button>`;
+
+const VIEW = {
+  general: () => F("অ্যাপের নাম", "appName") + F("লোগো (ইমোজি/চিহ্ন)", "logo") + F("ডানদিকের লেখা (খালি রাখলে লুকাবে)", "premiumLabel") +
+    F("স্বাগত বার্তা (খালি রাখলে লুকাবে)", "notice") + F("সার্চ বক্সের লেখা", "searchPlaceholder") + F("ভিডিও না পেলে যে লেখা দেখাবে", "emptyText") +
+    `<div class="card"><b>রঙ</b><div class="grid">` + [["bg", "ব্যাকগ্রাউন্ড"], ["card", "কার্ড"], ["line", "বর্ডার"], ["text", "লেখা"], ["mute", "হালকা লেখা"], ["accent1", "মূল রঙ ১"], ["accent2", "মূল রঙ ২"], ["gold", "লক/প্রিমিয়াম"]]
+      .map(([k, n]) => F(n, "theme." + k, "color")).join("") + `</div></div>`,
+  menu: () => cfg.tabs.map((t, i) => {
+    const b = "tabs." + i;
+    let extra = '<p class="mute">এই মেনুতে ভিডিও ফিড দেখাবে।</p>';
+    if (t.type === "links") extra = F("পেজের শিরোনাম", b + ".title") + (t.items || []).map((it, j) => `<div class="sub"><div class="bar"><span class="mute">লিংক ${j + 1}</span><span>${btns(b + ".items", j)}</span></div>` +
+      F("লেখা", `${b}.items.${j}.title`) + F("লিংক (https://t.me/...)", `${b}.items.${j}.url`) + F("বাটনের লেখা", `${b}.items.${j}.button`) + "</div>").join("") +
+      `<button class="add" onclick="add('${b}.items',{title:'',url:'https://t.me/',button:'জয়েন'})">+ লিংক যোগ করুন</button>`;
+    if (t.type === "page") extra = F("পেজের শিরোনাম", b + ".title") + T("লেখা", b + ".text");
+    return `<div class="card"><div class="bar"><b>${i + 1}. ${esc(t.label)}</b><span>${btns("tabs", i)}</span></div>` + F("মেনুর নাম", b + ".label") + F("আইকন (ইমোজি)", b + ".icon") +
+      S("ধরন", b + ".type", [["videos", "ভিডিও ফিড"], ["links", "লিংকের তালিকা"], ["page", "লেখার পেজ"]], true) + extra + "</div>";
+  }).join("") + `<button class="add" onclick="add('tabs',{label:'নতুন মেনু',icon:'⭐',type:'page',title:'',text:''})">+ নতুন মেনু</button>`,
+  cats: () => `<p class="mute">প্রথমটি "সব" ক্যাটাগরি। নাম বদলালে ভিডিওগুলোতেও অটো বদলে যাবে।</p>` +
+    cfg.categories.map((c, i) => `<div class="row2"><input value="${esc(c)}" oninput="renameCat(${i},this.value)">${i ? btns("categories", i) : '<span class="mute">(সব)</span>'}</div>`).join("") +
+    `<button class="add" onclick="add('categories','নতুন ক্যাটাগরি')">+ নতুন ক্যাটাগরি</button>`,
+  videos: () => cfg.videos.map((v, i) => {
+    const b = "videos." + i;
+    return `<div class="card"><div class="bar"><b>${i + 1}. ${esc(v.title)}</b><span>${btns("videos", i)}</span></div>` + F("শিরোনাম", b + ".title") +
+      S("ক্যাটাগরি", b + ".cat", cfg.categories.slice(1).map(c => [c, c])) +
+      `<div class="grid">${F("সময় (মিনিট:সেকেন্ড)", b + ".dur")}${F("কয়টি বিজ্ঞাপন (০ = ফ্রি)", b + ".ads", "number", 'min="0"')}${F("ভিউ (শুরুর সংখ্যা)", b + ".views", "number", 'min="0"')}${F("লাইক (শুরুর সংখ্যা)", b + ".likes", "number", 'min="0"')}</div>` +
+      F("ভিডিও লিংক (নিজে আপলোড করলে অটো বসবে)", b + ".src") +
+      `<label class="up">📤 ভিডিও আপলোড<input type="file" accept="video/mp4,video/webm,video/quicktime" hidden onchange="upl(this,${i},'src')"></label> <span class="mute" id="pr-${i}-src"></span>` +
+      F("থাম্বনেইল লিংক", b + ".thumb") + (v.thumb ? `<img class="th" src="${esc(v.thumb)}">` : "") +
+      `<label class="up">🖼 থাম্বনেইল আপলোড<input type="file" accept="image/*" hidden onchange="upl(this,${i},'thumb')"></label> <span class="mute" id="pr-${i}-thumb"></span></div>`;
+  }).join("") + `<button class="add" onclick="addVideo()">+ নতুন ভিডিও</button>`,
+  ads: () => `<div class="card">` + S("বিজ্ঞাপনের ধরন", "ads.provider", [["demo", "ডেমো (কাউন্টডাউন)"], ["adsgram", "Adsgram (আসল বিজ্ঞাপন)"]]) + F("Adsgram blockId", "ads.blockId") + F("ডেমো কাউন্টডাউন (সেকেন্ড)", "ads.demoSeconds", "number", 'min="1"') +
+    F("লক ব্যাজের লেখা (যেমন Ads)", "ads.lockedLabel") + F("আনলক পপআপের শিরোনাম", "ads.unlockTitle") + F("আনলক পপআপের লেখা ({n} = বাকি বিজ্ঞাপন)", "ads.unlockText") +
+    F("বিজ্ঞাপন বাটনের লেখা", "ads.watchButton") + F("বাতিল বাটনের লেখা", "ads.cancelButton") + `</div><p class="mute">প্রতিটি ভিডিওতে কয়টি বিজ্ঞাপন লাগবে তা "ভিডিও" ট্যাবে ঠিক করুন।</p>`
+};
+function render() {
+  $("#tabs").innerHTML = SECS.map(([k, l]) => `<button class="${k === sec ? "on" : ""}" onclick="sec='${k}';render()">${l}</button>`).join("");
+  $("#body").innerHTML = VIEW[sec]();
+}
+document.addEventListener("input", e => {
+  const p = e.target.dataset && e.target.dataset.p; if (!p) return;
+  set(cfg, p, e.target.type === "number" ? (+e.target.value || 0) : e.target.value); dirty();
+});
+function mv(p, i, d) { const a = arr(p), j = i + d; if (j < 0 || j >= a.length || (p === "categories" && j < 1)) return; [a[i], a[j]] = [a[j], a[i]]; dirty(); render(); }
+function add(p, o) { arr(p).push(o); dirty(); render(); }
+function addVideo() { add("videos", { id: "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), title: "নতুন ভিডিও", cat: cfg.categories[1] || "", dur: "00:00", views: 0, likes: 0, ads: 3, src: "", thumb: "" }); }
+function del(p, i) {
+  if (!confirm("মুছে ফেলবেন?")) return;
+  const a = arr(p);
+  if (p === "videos") [a[i].src, a[i].thumb].forEach(u => u && u.startsWith("/uploads/") && removed.push(u));
+  if (p === "categories") cfg.videos.forEach(v => { if (v.cat === a[i]) v.cat = cfg.categories[1] === a[i] ? (cfg.categories[2] || "") : cfg.categories[1]; });
+  a.splice(i, 1); dirty(); render();
+}
+function renameCat(i, val) { const old = cfg.categories[i]; cfg.categories[i] = val; cfg.videos.forEach(v => { if (v.cat === old) v.cat = val; }); dirty(); }
+function dur(f, cb) {
+  const v = document.createElement("video"); v.preload = "metadata";
+  v.onloadedmetadata = () => { const s = Math.round(v.duration); if (isFinite(s)) cb(String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0")); URL.revokeObjectURL(v.src); };
+  v.src = URL.createObjectURL(f);
+}
+function upl(inp, i, key) {
+  const f = inp.files[0]; if (!f) return;
+  const pr = $(`#pr-${i}-${key}`), x = new XMLHttpRequest();
+  x.open("POST", "/api/upload?name=" + encodeURIComponent(f.name));
+  x.setRequestHeader("Authorization", "Bearer " + token);
+  x.upload.onprogress = e => { if (e.lengthComputable) pr.textContent = Math.round(e.loaded / e.total * 100) + "% আপলোড হচ্ছে..."; };
+  x.onerror = () => pr.textContent = "❌ নেটওয়ার্ক সমস্যা";
+  x.onload = () => {
+    if (x.status !== 200) { let m = x.status; try { m = JSON.parse(x.responseText).error; } catch (e) {} pr.textContent = "❌ " + m; return; }
+    const url = JSON.parse(x.responseText).url, old = cfg.videos[i][key];
+    if (old && old.startsWith("/uploads/")) removed.push(old);
+    cfg.videos[i][key] = url; dirty(); render();
+    if (key === "src") dur(f, d => { cfg.videos[i].dur = d; render(); });
+  };
+  x.send(f);
+}
+async function save() {
+  $("#st").textContent = "সেভ হচ্ছে...";
+  try {
+    const r = await api("/api/admin/config", { method: "PUT", body: JSON.stringify({ config: cfg, removed }) });
+    if (!r.ok) throw new Error((await r.json()).error);
+    removed = []; $("#st").textContent = "✅ সেভ হয়েছে";
+  } catch (e) { $("#st").textContent = "❌ সেভ হয়নি: " + (e.message || ""); }
+}
+start();
+EOF
+cat > README.txt <<'EOF'
+ফান হাব: টেলিগ্রাম মিনি অ্যাপ + অ্যাডমিন প্যানেল
+=================================================
+
+কী কী আছে
+  server.js          সার্ভার (শুধু Node.js 18+ লাগে, আলাদা প্যাকেজ ইনস্টল লাগে না)
+  public/            অ্যাপ (ইউজার যা দেখবে) এবং admin.html (আপনার প্যানেল)
+  default-config.json  শুরুর ডিফল্ট সেটিং
+  data/              (অটো তৈরি হবে) আপনার সেটিং, ভিডিও, ভিউ-লাইক সব এখানে জমা থাকে
+
+অ্যাডমিন প্যানেলে যা যা করা যায় (আপনার-সাইট/admin)
+  - ভিডিও আপলোড (সময় অটো ধরে), থাম্বনেইল আপলোড, শিরোনাম, ক্যাটাগরি
+  - প্রতিটি ভিডিওতে কয়টি বিজ্ঞাপন লাগবে (০ দিলে ফ্রি)
+  - মেনু যোগ/মোছা/নাম বদল/ক্রম বদল, লিংকের তালিকা ও লেখার পেজ
+  - অ্যাপের নাম, লোগো, সব লেখা, সব রঙ
+  - ক্যাটাগরি, বিজ্ঞাপনের ধরন (ডেমো/Adsgram) ও লেখা
+  - ভিউ ও লাইক গোনা অটো হয়
+
+নিজের কম্পিউটারে চালিয়ে দেখা
+  node server.js
+  তারপর ব্রাউজারে http://localhost:3000 (অ্যাপ) ও http://localhost:3000/admin (প্যানেল, পাসওয়ার্ড admin123)
+
+অনলাইনে চালু করা (টেলিগ্রামের জন্য HTTPS লাগবে)
+  ১. এই ফোল্ডার GitHub-এ তুলুন অথবা সরাসরি VPS-এ কপি করুন
+  ২. Render / Railway / যেকোনো VPS-এ "Node অ্যাপ" হিসেবে চালান, স্টার্ট কমান্ড: node server.js
+  ৩. Environment Variable সেট করুন:
+       ADMIN_PASSWORD = আপনার শক্ত পাসওয়ার্ড  (এটা না দিলে অনলাইনে লগইন বন্ধ থাকবে)
+       DATA_DIR = ডিস্কের পথ (যেমন /data), পরের সতর্কতা দেখুন
+       MAX_UPLOAD_MB = আপলোডের সর্বোচ্চ সাইজ (ডিফল্ট ৫০০)
+  ৪. পাওয়া HTTPS লিংকে /admin খুলে লগইন করুন
+
+⚠ জরুরি সতর্কতা: ফ্রি হোস্টিংয়ের ডিস্ক সাধারণত স্থায়ী নয়। রিস্টার্টে আপলোড করা ভিডিও ও সেটিং মুছে যেতে পারে।
+   তাই স্থায়ী ডিস্ক (Render Disk, Railway Volume) বা VPS নিন এবং DATA_DIR সেই ডিস্কে দিন।
+   ভিডিও বেশি হলে সস্তা VPS সবচেয়ে ভালো, কারণ ভিডিওর ট্রাফিকও সার্ভারের ওপর দিয়ে যায়।
+   অ্যাডমিন প্যানেলে ভিডিওর "লিংক" ঘরে অন্য কোথাও রাখা mp4 লিংকও বসানো যায়।
+
+টেলিগ্রামে যুক্ত করা
+  @BotFather > /newbot দিয়ে বট বানান > /newapp (অথবা Bot Settings > Menu Button) দিয়ে আপনার HTTPS লিংক দিন
+
+নিরাপত্তা
+  - পাসওয়ার্ড ৫ বার ভুল হলে ১ মিনিট লক হয়
+  - আপলোডে শুধু mp4, webm, mov, jpg, png, webp চলে
+EOF
+# ---- test ----
+export PORT=3111 DATA_DIR=/tmp/fhdata; rm -rf /tmp/fhdata
+node server.js > /tmp/srv.log 2>&1 & SP=$!; sleep 1
+H="Host: localhost"
+TK=$(curl -s -X POST localhost:3111/api/login -d '{"password":"admin123"}' | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+echo "badlogin: $(curl -s -X POST localhost:3111/api/login -d '{"password":"x"}')"
+echo "noauth: $(curl -s -o /dev/null -w %{http_code} localhost:3111/api/admin/config)"
+echo "cfg videos: $(curl -s localhost:3111/api/config | python3 -c "import sys,json;print(len(json.load(sys.stdin)['videos']))")"
+head -c 100000 /dev/urandom > /tmp/t.mp4
+URL=$(curl -s -X POST -H "Authorization: Bearer $TK" --data-binary @/tmp/t.mp4 "localhost:3111/api/upload?name=a.mp4" | python3 -c "import sys,json;print(json.load(sys.stdin)['url'])"); echo "upload: $URL"
+echo "badext: $(curl -s -X POST -H "Authorization: Bearer $TK" --data-binary @/tmp/t.mp4 "localhost:3111/api/upload?name=a.html")"
+echo "range: $(curl -s -o /dev/null -w '%{http_code} %{size_download}' -H 'Range: bytes=0-99' localhost:3111$URL)"
+curl -s -H "Authorization: Bearer $TK" localhost:3111/api/admin/config > /tmp/c.json
+python3 - <<PY
+import json
+c=json.load(open('/tmp/c.json')); c['videos'][0]['src']='$URL'; c['appName']='টেস্ট'
+json.dump({'config':c,'removed':[]},open('/tmp/put.json','w'))
+PY
+echo "put: $(curl -s -X PUT -H "Authorization: Bearer $TK" --data-binary @/tmp/put.json localhost:3111/api/admin/config)"
+echo "stat: $(curl -s -X POST localhost:3111/api/stat -d '{"id":"v1","type":"view"}')"
+echo "merged: $(curl -s localhost:3111/api/config | python3 -c "import sys,json;d=json.load(sys.stdin);print(d['appName'],d['videos'][0]['views'],d['videos'][0]['src'])")"
+echo "traversal: $(curl -s --path-as-is -o /dev/null -w %{http_code} localhost:3111/../server.js)"
+echo "admin page: $(curl -s -o /dev/null -w %{http_code} localhost:3111/admin) index: $(curl -s -o /dev/null -w %{http_code} localhost:3111/)"
+kill $SP
+node --check public/app.js && node --check public/admin.js && node --check server.js && echo syntax-ok
+cat /tmp/srv.log
+rm -rf data; python3 -c "
+import zipfile,os
+z=zipfile.ZipFile('/mnt/user-data/outputs/fun-hub-admin.zip','w',zipfile.ZIP_DEFLATED)
+for r,d,fs in os.walk('.'):
+  for f in fs: z.write(os.path.join(r,f),'fun-hub/'+os.path.join(r,f)[2:])
+z.close()"

@@ -1,0 +1,96 @@
+{
+  "appName": "ফান হাব",
+  "logo": "♥",
+  "premiumLabel": "প্রিমিয়াম",
+  "notice": "📢 স্বাগতম! বিজ্ঞাপন দেখে ফুল এইচডি ভিডিও উপভোগ করুন",
+  "searchPlaceholder": "ভিডিও খুঁজুন...",
+  "emptyText": "কোনো ভিডিও পাওয়া যায়নি",
+  "theme": {
+    "bg": "#14061f",
+    "card": "#1f0b31",
+    "line": "#4a2060",
+    "text": "#f3e9fb",
+    "mute": "#a58bb8",
+    "accent1": "#ec2b8a",
+    "accent2": "#b02bec",
+    "gold": "#f5b94a"
+  },
+  "tabs": [
+    { "label": "ভিডিও", "icon": "▶", "type": "videos" },
+    {
+      "label": "চ্যাট পেজ",
+      "icon": "💬",
+      "type": "links",
+      "title": "চ্যাট পেজ",
+      "items": [
+        { "title": "😂 ফানি ক্লিপ গ্রুপ", "url": "https://t.me/fun_clips_bangla", "button": "জয়েন" },
+        { "title": "🎭 নাটক আলোচনা কমিউনিটি", "url": "https://t.me/bangla_natok_club", "button": "জয়েন" },
+        { "title": "🎬 শর্ট ফিল্ম আড্ডা", "url": "https://t.me/shortfilm_bd", "button": "যুক্ত হন" }
+      ]
+    },
+    {
+      "label": "আমাদের কথা",
+      "icon": "ℹ",
+      "type": "page",
+      "title": "আমাদের সম্পর্কে",
+      "text": "স্বাগতম ফান হাব-এ! এখানে আপনি পাবেন ট্রেন্ডিং ফানি ক্লিপ, বাংলা নাটক এবং প্র্যাঙ্ক ভিডিও।\n\nপ্রতিটি ভিডিও বিনামূল্যে দেখতে কয়েকটি ছোট বিজ্ঞাপন দেখুন এবং ফুল এইচডি কোয়ালিটি উপভোগ করুন।\nনতুন ভিডিও প্রতিদিন আপডেট করা হয়!"
+    }
+  ],
+  "categories": ["সবগুলো", "ফানি", "নাটক", "প্র্যাঙ্ক", "রোমান্টিক"],
+  "ads": {
+    "provider": "demo",
+    "demoSeconds": 5,
+    "blockId": "",
+    "lockedLabel": "Ads",
+    "unlockTitle": "🔒 ভিডিও আনলক করুন",
+    "unlockText": "আরও {n}টি বিজ্ঞাপন দেখলে ভিডিওটি চালু হবে।",
+    "watchButton": "বিজ্ঞাপন দেখুন",
+    "cancelButton": "বাতিল"
+  },
+  "videos": [
+    {
+      "id": "v1",
+      "title": "অফিসে বসের সামনে হাসির কাণ্ড 😂",
+      "cat": "ফানি",
+      "dur": "03:24",
+      "views": 2617,
+      "likes": 228,
+      "ads": 3,
+      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "thumb": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "v2",
+      "title": "পরিবারের নাটক: বাজারের ব্যাগ রহস্য 🎭",
+      "cat": "নাটক",
+      "dur": "08:10",
+      "views": 1840,
+      "likes": 174,
+      "ads": 2,
+      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "thumb": "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "v3",
+      "title": "বন্ধুদের প্র্যাঙ্ক: ভুতুড়ে ঘর 👻",
+      "cat": "প্র্যাঙ্ক",
+      "dur": "05:42",
+      "views": 3920,
+      "likes": 410,
+      "ads": 4,
+      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      "thumb": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80"
+    },
+    {
+      "id": "v4",
+      "title": "ক্যাম্পাসের প্রথম ভালোবাসা ও স্মৃতি 💖",
+      "cat": "রোমান্টিক",
+      "dur": "04:15",
+      "views": 1520,
+      "likes": 312,
+      "ads": 0,
+      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "thumb": "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=600&auto=format&fit=crop&q=80"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Fun Hub - Telegram Mini App & Admin",
+  "description": "টেলিগ্রাম মিনি অ্যাপ এবং ফুল কন্ট্রোল অ্যাডমিন প্যানেল: ভিডিও স্ট্রিমিং, অ্যাড মনিটাইজেশন, কাস্টম থিম এবং অ্যানালিটিক্স।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
