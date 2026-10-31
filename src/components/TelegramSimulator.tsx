@@ -16,6 +16,13 @@ import {
   Minimize2,
   RotateCcw,
   Settings,
+  ChevronLeft,
+  FastForward,
+  Rewind,
+  AlertCircle,
+  RefreshCw,
+  Expand,
+  Shrink,
 } from "lucide-react";
 
 interface TelegramSimulatorProps {
@@ -59,6 +66,49 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
     video?: VideoItem;
     countdown?: number;
   }>({ type: "none" });
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoFit, setVideoFit] = useState<"contain" | "cover">("contain");
+  const [videoLoading, setVideoLoading] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+
+  const handleNativeFullscreen = () => {
+    const el = videoRef.current;
+    if (!el) return;
+    try {
+      if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          (document as any).webkitExitFullscreen();
+        }
+        return;
+      }
+
+      if (el.requestFullscreen) {
+        el.requestFullscreen();
+      } else if ((el as any).webkitEnterFullscreen) {
+        (el as any).webkitEnterFullscreen();
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen();
+      } else if ((el as any).mozRequestFullScreen) {
+        (el as any).mozRequestFullScreen();
+      } else if ((el as any).msRequestFullscreen) {
+        (el as any).msRequestFullscreen();
+      }
+    } catch (err) {
+      console.warn("Fullscreen toggle error:", err);
+    }
+  };
+
+  const handleSeek = (delta: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = Math.max(
+        0,
+        Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + delta)
+      );
+    }
+  };
 
   const handleLogoTap = () => {
     // Discreet multi-tap gesture: 5 taps within 2.5s only opens if user is authorized admin
@@ -550,8 +600,8 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
         )}
       </div>
 
-      {/* Modal Overlay: Ad Prompt, Ad Countdown, Video Player */}
-      {modalState.type !== "none" && (
+      {/* Modal Overlay: Ad Prompt & Ad Countdown */}
+      {modalState.type !== "none" && modalState.type !== "video_player" && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div
             className="w-full max-w-sm rounded-3xl border p-5 text-center shadow-2xl relative animate-in fade-in zoom-in duration-200"
@@ -649,59 +699,177 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 </p>
               </div>
             )}
+          </div>
+        </div>
+      )}
 
-            {/* State: Video Player Modal */}
-            {modalState.type === "video_player" && modalState.video && (
-              <div className="py-1 text-left">
-                <div className="flex items-center gap-2 mb-2 pr-6">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: theme.accent1 }}
-                  />
-                  <h3
-                    className="font-bold text-sm truncate"
-                    style={{ color: theme.text }}
-                  >
-                    {modalState.video.title}
-                  </h3>
-                </div>
+      {/* Fullscreen Video Player Modal */}
+      {modalState.type === "video_player" && modalState.video && (
+        <div className="fixed inset-0 bg-black/95 z-50 flex flex-col justify-between overflow-hidden animate-in fade-in duration-200">
+          {/* Top Header Bar */}
+          <div className="px-3 sm:px-4 py-2.5 flex items-center justify-between border-b border-white/10 bg-black/80 backdrop-blur-md shrink-0 z-20">
+            <button
+              onClick={closeModal}
+              className="flex items-center gap-1.5 py-1.5 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold cursor-pointer transition-all active:scale-95"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>ফিরে যান</span>
+            </button>
 
-                <div className="rounded-2xl overflow-hidden bg-black border border-white/10 shadow-inner">
-                  {modalState.video.src ? (
-                    <video
-                      src={modalState.video.src}
-                      controls
-                      autoPlay
-                      playsInline
-                      className="w-full max-h-56 object-contain"
-                    />
-                  ) : (
-                    <div className="h-44 flex flex-col items-center justify-center p-4 text-center text-xs text-white/60">
-                      <Volume2 className="w-8 h-8 mb-2 opacity-40" />
-                      <p>এই ভিডিওর ফাইল এখনো সার্ভারে যোগ করা হয়নি।</p>
-                      <p className="mt-1 text-white/40">
-                        অ্যাডমিন প্যানেল থেকে ভিডিও আপলোড করুন।
-                      </p>
-                    </div>
-                  )}
-                </div>
+            <div className="flex-1 mx-2 sm:mx-3 text-center min-w-0">
+              <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 font-bold mr-1.5">
+                {modalState.video.cat}
+              </span>
+              <h3 className="inline text-xs sm:text-sm font-bold text-white truncate align-middle">
+                {modalState.video.title}
+              </h3>
+            </div>
 
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-xs" style={{ color: theme.mute }}>
-                    {modalState.video.cat} • {modalState.video.dur}
-                  </span>
-                  <button
-                    onClick={closeModal}
-                    className="px-5 py-2 rounded-xl text-xs font-bold text-white shadow cursor-pointer"
-                    style={{
-                      background: `linear-gradient(90deg, ${theme.accent1}, ${theme.accent2})`,
-                    }}
-                  >
-                    বন্ধ করুন
-                  </button>
-                </div>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setVideoFit(videoFit === "contain" ? "cover" : "contain")}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
+                title={videoFit === "contain" ? "স্ক্রিন ফিল (Fill Screen)" : "স্ক্রিন ফিট (Fit Screen)"}
+              >
+                {videoFit === "contain" ? <Expand className="w-4 h-4" /> : <Shrink className="w-4 h-4" />}
+              </button>
+              <button
+                onClick={closeModal}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
+                title="বন্ধ করুন"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
+          {/* Central Video Viewport */}
+          <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none w-full min-h-0">
+            {videoLoading && !videoError && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/50 backdrop-blur-sm pointer-events-none">
+                <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-2" />
+                <span className="text-xs text-white/80 font-medium">ভিডিও লোড হচ্ছে...</span>
               </div>
             )}
+
+            {videoError ? (
+              <div className="p-6 text-center text-white max-w-sm">
+                <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                <h4 className="font-bold text-sm text-red-300 mb-1">ভিডিও প্লে হতে সমস্যা হয়েছে</h4>
+                <p className="text-xs text-white/60 mb-4 leading-relaxed">
+                  ভিডিও লিঙ্কটি সাময়িকভাবে উপলব্ধ নয় অথবা নেটওয়ার্ক সমস্যা হয়েছে।
+                </p>
+                <button
+                  onClick={() => {
+                    setVideoError(false);
+                    setVideoLoading(true);
+                    if (videoRef.current) {
+                      videoRef.current.load();
+                      videoRef.current.play().catch(() => {});
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-pink-600 text-white text-xs font-semibold hover:bg-pink-500 cursor-pointer flex items-center gap-1.5 mx-auto"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>পুনরায় চেষ্টা করুন</span>
+                </button>
+              </div>
+            ) : modalState.video.src ? (
+              <video
+                ref={videoRef}
+                src={modalState.video.src}
+                controls
+                autoPlay
+                playsInline
+                webkit-playsinline="true"
+                onWaiting={() => setVideoLoading(true)}
+                onPlaying={() => setVideoLoading(false)}
+                onError={() => {
+                  setVideoError(true);
+                  setVideoLoading(false);
+                }}
+                className={`w-full h-full max-h-[82vh] transition-all duration-200 ${
+                  videoFit === "cover" ? "object-cover" : "object-contain"
+                }`}
+              />
+            ) : (
+              <div className="p-6 text-center text-white/60">
+                <Volume2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                <p className="text-sm font-semibold">ভিডিও ফাইল পাওয়া যায়নি</p>
+                <p className="text-xs mt-1 text-white/40">অ্যাডমিন প্যানেল থেকে ভিডিও লিঙ্ক দিন</p>
+              </div>
+            )}
+          </div>
+
+          {/* Bottom Controls & Fullscreen Banner */}
+          <div className="p-3 sm:p-4 bg-gradient-to-t from-black via-black/95 to-black/70 border-t border-white/10 shrink-0 z-20 space-y-2.5">
+            {/* Primary Fullscreen Trigger Button */}
+            <button
+              onClick={handleNativeFullscreen}
+              className="w-full py-3.5 px-4 rounded-2xl text-white font-bold text-sm shadow-xl flex items-center justify-center gap-2.5 cursor-pointer transition-transform active:scale-[0.98] border border-white/20"
+              style={{
+                background: `linear-gradient(90deg, ${theme.accent1}, ${theme.accent2})`,
+              }}
+            >
+              <Maximize2 className="w-5 h-5" />
+              <span>📱 ফুল স্ক্রিন করুন (Fullscreen Mode)</span>
+            </button>
+
+            {/* Sub Controls: Seek, Fit, Like */}
+            <div className="flex items-center justify-between text-xs text-white/70 px-1 pt-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSeek(-10)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <Rewind className="w-3.5 h-3.5" />
+                  <span>-১০ সে.</span>
+                </button>
+                <button
+                  onClick={() => handleSeek(10)}
+                  className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <FastForward className="w-3.5 h-3.5" />
+                  <span>+১০ সে.</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setVideoFit(videoFit === "contain" ? "cover" : "contain")}
+                  className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  {videoFit === "contain" ? (
+                    <>
+                      <Expand className="w-3 h-3 text-pink-400" />
+                      <span>স্ক্রিন ফিল</span>
+                    </>
+                  ) : (
+                    <>
+                      <Shrink className="w-3 h-3 text-pink-400" />
+                      <span>স্ক্রিন ফিট</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={(e) => handleLike(e, modalState.video!)}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  style={{
+                    color: likedVideos[modalState.video.id] ? theme.accent1 : "#ffffff",
+                  }}
+                >
+                  <Heart
+                    className={`w-3.5 h-3.5 ${
+                      likedVideos[modalState.video.id] ? "fill-current" : ""
+                    }`}
+                  />
+                  <span>
+                    {Number(modalState.video.likes || 0).toLocaleString("bn-BD")}
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

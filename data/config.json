@@ -56,7 +56,7 @@
       "views": 2617,
       "likes": 228,
       "ads": 3,
-      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+      "src": "https://media.w3.org/2010/05/bunny/trailer.mp4",
       "thumb": "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80"
     },
     {
@@ -67,7 +67,7 @@
       "views": 1840,
       "likes": 174,
       "ads": 2,
-      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "src": "https://media.w3.org/2010/05/sintel/trailer.mp4",
       "thumb": "https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80"
     },
     {
@@ -78,7 +78,7 @@
       "views": 3920,
       "likes": 410,
       "ads": 4,
-      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+      "src": "https://vjs.zencdn.net/v/oceans.mp4",
       "thumb": "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80"
     },
     {
@@ -89,7 +89,7 @@
       "views": 1520,
       "likes": 312,
       "ads": 0,
-      "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
+      "src": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
       "thumb": "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=600&auto=format&fit=crop&q=80"
     }
   ]

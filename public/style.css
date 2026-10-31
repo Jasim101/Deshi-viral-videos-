@@ -26,12 +26,12 @@ nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);b
 nav button{flex:1;background:none;border:0;color:var(--mute);padding:10px;font-family:inherit;font-size:13px;cursor:pointer;transition:0.2s}
 nav button.on{color:var(--accent1)}
 nav span{display:block;font-size:20px;margin-bottom:2px}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.88);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:40;padding:12px}
 .modal.show{display:flex}
-.box{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:22px;width:100%;max-width:380px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.6)}
+.box{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:20px;width:100%;max-width:540px;text-align:center;box-shadow:0 15px 40px rgba(0,0,0,0.8);max-height:92vh;overflow-y:auto}
 .btn{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#fff;border:0;border-radius:24px;padding:12px 22px;font-family:inherit;font-size:15px;font-weight:600;margin-top:12px;cursor:pointer;width:100%}
 .btn.ghost{background:none;border:1px solid var(--line);color:var(--mute)}
-video{width:100%;border-radius:12px;background:#000;margin-top:10px;max-height:260px}
+video{width:100%;border-radius:14px;background:#000;margin-top:10px;max-height:72vh;object-fit:contain}
 .row{border:1px solid var(--line);background:var(--card);border-radius:16px;padding:14px;margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .row .btn{margin:0;padding:8px 18px;width:auto}
 .empty{text-align:center;color:var(--mute);margin-top:40px;padding:20px}

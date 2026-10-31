@@ -194,11 +194,24 @@
     }
   };
 
+  window.__fs = () => {
+    const el = document.getElementById("active-video");
+    if (!el) return;
+    try {
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) {}
+  };
+
   function play(v) {
     const media = safeUrl(v.src)
-      ? `<video src="${esc(v.src)}" controls autoplay playsinline></video>`
+      ? `<div style="position:relative;width:100%;background:#000;border-radius:16px;overflow:hidden;margin:10px 0">
+           <video id="active-video" src="${esc(v.src)}" controls autoplay playsinline webkit-playsinline style="width:100%;max-height:72vh;display:block"></video>
+         </div>
+         <button class="btn" onclick="__fs()" style="margin-bottom:8px">📱 ফুল স্ক্রিন করুন (Fullscreen)</button>`
       : '<p style="color:var(--mute);padding:20px">এই ভিডিওর ফাইল এখনো সার্ভারে যোগ করা হয়নি। অ্যাডমিন প্যানেল থেকে ফাইল আপলোড করুন।</p>';
-    show(`<h3 style="font-size:16px;margin-bottom:8px">${esc(v.title)}</h3>${media}<button class="btn" onclick="__close()">বন্ধ করুন</button>`);
+    show(`<div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-size:15px;margin:0;text-align:left;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.title)}</h3><span style="font-size:11px;color:var(--mute);margin-left:8px">${esc(v.cat || "")}</span></div>${media}<button class="btn ghost" onclick="__close()">বন্ধ করুন</button>`);
     v.views = (+v.views || 0) + 1;
     stat(v.id, "view");
     renderList();
