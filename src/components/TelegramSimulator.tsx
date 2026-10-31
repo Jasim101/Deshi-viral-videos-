@@ -24,6 +24,7 @@ import {
   Expand,
   Shrink,
 } from "lucide-react";
+import { normalizeMediaUrl } from "../utils/mediaUtils";
 
 interface TelegramSimulatorProps {
   config: AppConfig;
@@ -756,8 +757,11 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
               <div className="p-6 text-center text-white max-w-sm">
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
                 <h4 className="font-bold text-sm text-red-300 mb-1">ভিডিও প্লে হতে সমস্যা হয়েছে</h4>
-                <p className="text-xs text-white/60 mb-4 leading-relaxed">
-                  ভিডিও লিঙ্কটি সাময়িকভাবে উপলব্ধ নয় অথবা নেটওয়ার্ক সমস্যা হয়েছে।
+                <p className="text-xs text-white/70 mb-2 leading-relaxed">
+                  ভিডিও লিঙ্কটি সাময়িকভাবে উপলব্ধ নয় অথবা পারমিশন নেই।
+                </p>
+                <p className="text-[11px] text-amber-300/80 mb-4 bg-amber-500/10 p-2 rounded-xl border border-amber-500/20">
+                  💡 গুগল ড্রাইভ লিংক হলে নিশ্চিত করুন ফাইলে &apos;Anyone with the link&apos; (যেকোনো ব্যক্তি যার কাছে লিংক আছে) পারমিশন দেওয়া রয়েছে।
                 </p>
                 <button
                   onClick={() => {
@@ -768,7 +772,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                       videoRef.current.play().catch(() => {});
                     }
                   }}
-                  className="px-4 py-2 rounded-xl bg-pink-600 text-white text-xs font-semibold hover:bg-pink-500 cursor-pointer flex items-center gap-1.5 mx-auto"
+                  className="px-4 py-2 rounded-xl bg-pink-600 text-white text-xs font-semibold hover:bg-pink-500 cursor-pointer flex items-center gap-1.5 mx-auto shadow"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span>পুনরায় চেষ্টা করুন</span>
@@ -777,7 +781,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             ) : modalState.video.src ? (
               <video
                 ref={videoRef}
-                src={modalState.video.src}
+                src={normalizeMediaUrl(modalState.video.src)}
                 controls
                 autoPlay
                 playsInline

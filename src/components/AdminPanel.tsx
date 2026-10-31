@@ -29,7 +29,10 @@ import {
   ArrowLeft,
   X,
   Download,
+  Play,
+  Sparkles,
 } from "lucide-react";
+import { normalizeMediaUrl, isGoogleDriveUrl, isDropboxUrl } from "../utils/mediaUtils";
 
 interface AdminPanelProps {
   currentConfig: AppConfig;
@@ -58,6 +61,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const currentTgUser = typeof window !== "undefined" ? (window as any).Telegram?.WebApp?.initDataUnsafe?.user : null;
 
   const [isTgDenied, setIsTgDenied] = useState<boolean>(false);
+  const [canMasterUnlock, setCanMasterUnlock] = useState<boolean>(false);
+  const [showEmergencyUnlock, setShowEmergencyUnlock] = useState<boolean>(false);
+  const [emergencyPw, setEmergencyPw] = useState<string>("");
+  const [emergencyLoading, setEmergencyLoading] = useState<boolean>(false);
+  const [emergencyError, setEmergencyError] = useState<string>("");
+  const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
 
   // Clear any legacy stored tokens from previous testing so direct access is completely impossible
   useEffect(() => {
@@ -217,7 +226,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     }
   };
 
-  const handleLogin = async (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent, forceUnlock = false) => {
     if (e) e.preventDefault();
     if (!password) {
       setLoginError("পাসওয়ার্ড প্রদান করুন");
@@ -239,6 +248,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         body: JSON.stringify({
           password,
           telegramUserId: tgUser ? tgUser.id : undefined,
+          forceMasterUnlock: forceUnlock,
         }),
       });
       const data = await res.json();
@@ -247,13 +257,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         if (data.retryAfter) {
           setRetryAfterSeconds(data.retryAfter);
         }
-        setLoginError(data.error || "পাসওয়ার্ড ভুল হয়েছে");
+        if (data.canUnlockWithMaster) {
+          setCanMasterUnlock(true);
+          setLoginError(data.error);
+        } else {
+          setLoginError(data.error || "পাসওয়ার্ড ভুল হয়েছে");
+        }
         setIsLoggingIn(false);
         return;
       }
 
+      setCanMasterUnlock(false);
       setToken(data.token);
       setIsDefaultPassword(!!data.isDefaultPassword);
+      setIsTgDenied(false);
 
       // Fetch config
       const cfgRes = await fetch("/api/admin/config", {
@@ -269,6 +286,53 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setLoginError("সার্ভারের সাথে যোগাযোগ করা যায়নি");
     } finally {
       setIsLoggingIn(false);
+    }
+  };
+
+  const handleEmergencyUnlock = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!emergencyPw) {
+      setEmergencyError("মাস্টার পাসওয়ার্ড প্রদান করুন");
+      return;
+    }
+
+    setEmergencyLoading(true);
+    setEmergencyError("");
+
+    try {
+      const res = await fetch("/api/emergency-unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: emergencyPw,
+          telegramUserId: currentTgUser?.id ? String(currentTgUser.id) : undefined,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setEmergencyError(data.error || "মাস্টার পাসওয়ার্ড ভুল হয়েছে");
+        return;
+      }
+
+      setToken(data.token);
+      setIsTgDenied(false);
+      setShowEmergencyUnlock(false);
+
+      // Fetch config
+      const cfgRes = await fetch("/api/admin/config", {
+        headers: { Authorization: `Bearer ${data.token}` },
+      });
+      if (cfgRes.ok) {
+        const fresh = await cfgRes.json();
+        setCfg(fresh);
+        onConfigUpdated(fresh);
+      }
+      fetchAuthStatus(data.token);
+    } catch {
+      setEmergencyError("সার্ভারের সাথে যোগাযোগ করা যায়নি");
+    } finally {
+      setEmergencyLoading(false);
     }
   };
 
@@ -589,11 +653,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const pwStrength = getPasswordStrength(newPw);
 
-  // If in Telegram and user is not the authorized admin, hide password box completely
+  // If in Telegram and user is not the authorized admin, show smart emergency unlock
   if (isTelegram && isTgDenied) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
-        <div className="w-full max-w-xs bg-[#160a26]/90 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 sm:p-7 text-center shadow-2xl relative">
+        <div className="w-full max-w-sm bg-[#160a26]/95 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 sm:p-7 text-center shadow-2xl relative">
           {onBackToApp && (
             <button
               onClick={handleExitToApp}
@@ -604,20 +668,76 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           )}
 
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-3xl">
-            ⛔
+          <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-2xl shadow-inner">
+            🛡️
           </div>
-          <h3 className="text-sm font-bold text-red-400 mb-1">অ্যাক্সেস সংরক্ষিত</h3>
-          <p className="text-xs text-[#a58bb8] mb-5 leading-relaxed">
-            শুধুমাত্র অনুমোদিত টেলিগ্রাম অ্যাডমিন অ্যাকাউন্টের জন্য এই প্যানেলটি সংরক্ষিত।
+          <h3 className="text-sm font-bold text-red-400 mb-1">টেলিগ্রাম সুরক্ষা লক সক্রিয়</h3>
+          <p className="text-xs text-[#a58bb8] mb-3 leading-relaxed">
+            আপনার বর্তমান টেলিগ্রাম আইডিটি এখনো অ্যাডমিন হিসেবে অনুমোদিত তালিকায় নেই।
           </p>
-          {onBackToApp && (
-            <button
-              onClick={handleExitToApp}
-              className="w-full py-2.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold transition-colors cursor-pointer"
-            >
-              অ্যাপে ফিরে যান
-            </button>
+
+          {currentTgUser?.id && (
+            <div className="mb-4 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 font-mono">
+              আপনার টেলিগ্রাম আইডি: <span className="font-bold text-pink-400">{currentTgUser.id}</span>
+            </div>
+          )}
+
+          {!showEmergencyUnlock ? (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowEmergencyUnlock(true)}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold transition-all shadow cursor-pointer flex items-center justify-center gap-2"
+              >
+                <KeyRound className="w-4 h-4" />
+                <span>🔑 মাস্টার পাসওয়ার্ড দিয়ে আনলক করুন</span>
+              </button>
+              {onBackToApp && (
+                <button
+                  type="button"
+                  onClick={handleExitToApp}
+                  className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  অ্যাপে ফিরে যান
+                </button>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleEmergencyUnlock} className="space-y-3 text-left">
+              <label className="text-[11px] text-[#8f93ad] block">
+                এডমিন মাস্টার পাসওয়ার্ড প্রবেশ করান:
+              </label>
+              <input
+                type="password"
+                placeholder="মাস্টার পাসওয়ার্ড"
+                value={emergencyPw}
+                onChange={(e) => setEmergencyPw(e.target.value)}
+                autoFocus
+                className="w-full px-4 py-2.5 rounded-xl bg-[#0d0417] border border-[#3b194f] text-white text-sm outline-none focus:border-pink-500"
+              />
+              {emergencyError && (
+                <p className="text-xs text-red-400 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>{emergencyError}</span>
+                </p>
+              )}
+              <div className="flex gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowEmergencyUnlock(false)}
+                  className="flex-1 py-2 rounded-xl bg-white/5 text-xs text-white/70 hover:bg-white/10"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  disabled={emergencyLoading || !emergencyPw}
+                  className="flex-1 py-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {emergencyLoading ? "আনলক হচ্ছে..." : "✅ অনুমোদন ও লগইন"}
+                </button>
+              </div>
+            </form>
           )}
         </div>
       </div>
@@ -643,14 +763,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             🔐
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-3">
+          <form onSubmit={(e) => handleLogin(e, false)} className="space-y-3">
             <div className="relative flex items-center">
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 disabled={retryAfterSeconds > 0}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setCanMasterUnlock(false);
+                }}
                 autoFocus
                 className="w-full px-4 py-3.5 pr-12 rounded-2xl bg-[#0d0417] border border-[#3b194f] text-white text-base tracking-widest placeholder:tracking-normal placeholder:text-white/30 outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all text-center disabled:opacity-50"
               />
@@ -680,6 +803,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                 <span>{loginError}</span>
               </div>
+            )}
+
+            {canMasterUnlock && (
+              <button
+                type="button"
+                onClick={() => handleLogin(undefined, true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white text-xs font-bold transition-all shadow cursor-pointer mt-2"
+              >
+                ✅ এই আইডি অ্যাডমিন তালিকায় যুক্ত করুন ও প্রবেশ করুন
+              </button>
             )}
           </form>
         </div>
@@ -1783,16 +1916,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   {/* Video Media Source & Upload */}
                   <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] space-y-2">
-                    <label className="text-xs text-[#8f93ad] block">
-                      ভিডিও ফাইল লিংক (mp4 লিংক বা নিরাপদ আপলোড)
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs text-[#8f93ad] block">
+                        ভিডিও ফাইল লিংক (গুগল ড্রাইভ, ড্রপবক্স, mp4 লিংক বা আপলোড)
+                      </label>
+                      {video.src && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewModalUrl(normalizeMediaUrl(video.src))}
+                          className="text-[11px] text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>টেস্ট ও প্রিভিউ</span>
+                        </button>
+                      )}
+                    </div>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={video.src}
-                        onChange={(e) => updateConfigValue(`videos.${idx}.src`, e.target.value)}
-                        placeholder="https://... অথবা আপলোড করুন"
-                        className="flex-1 px-3 py-2 rounded-xl bg-[#1a1b26] border border-[#33354a] text-xs text-white outline-none"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const normalized = normalizeMediaUrl(val);
+                          updateConfigValue(`videos.${idx}.src`, normalized);
+                        }}
+                        placeholder="Google Drive, Dropbox অথবা সরাসরি MP4 লিংক পেস্ট করুন"
+                        className="flex-1 px-3 py-2 rounded-xl bg-[#1a1b26] border border-[#33354a] text-xs text-white outline-none focus:border-pink-500 font-mono"
                       />
                       <label className="px-3 py-2 rounded-xl bg-[#262838] border border-[#33354a] hover:bg-white/10 text-xs font-semibold text-white cursor-pointer flex items-center gap-1.5 shrink-0">
                         <Upload className="w-3.5 h-3.5" />
@@ -1805,6 +1954,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         />
                       </label>
                     </div>
+
+                    {/* Helpful status indicator for Google Drive / Dropbox */}
+                    {video.src && (video.src.includes("/api/stream-drive") || isGoogleDriveUrl(video.src)) && (
+                      <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-[11px] text-blue-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <span>⚡ গুগল ড্রাইভ সরাসরি স্ট্রিমিং মোড সক্রিয়! (ফাইল &apos;Anyone with the link&apos; শেয়ার থাকতে হবে)</span>
+                      </div>
+                    )}
+                    {video.src && isDropboxUrl(video.src) && (
+                      <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-[11px] text-purple-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                        <span>⚡ ড্রপবক্স সরাসরি স্ট্রিমিং মোড সক্রিয়!</span>
+                      </div>
+                    )}
+
                     {srcProg && (
                       <p className="text-xs font-mono text-pink-400">{srcProg}</p>
                     )}
@@ -2032,6 +2196,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 {saveStatus}
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Video Preview Test Modal */}
+      {previewModalUrl && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#160a26] border border-pink-500/40 rounded-3xl p-5 shadow-2xl relative space-y-3">
+            <div className="flex items-center justify-between border-b border-[#33354a] pb-2.5">
+              <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                <Play className="w-4 h-4 text-pink-400 fill-current" />
+                <span>ভিডিও প্রিভিউ টেস্ট</span>
+              </span>
+              <button
+                onClick={() => setPreviewModalUrl(null)}
+                className="p-1.5 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl overflow-hidden bg-black aspect-video flex items-center justify-center border border-white/10">
+              <video
+                src={previewModalUrl}
+                controls
+                autoPlay
+                playsInline
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <p className="text-[11px] text-[#a58bb8] leading-relaxed">
+              💡 ভিডিওটি চালু হলে বুঝবেন লিংকটি পুরোপুরি কার্যকর। গুগল ড্রাইভ ভিডিও না চললে ফাইলে &apos;Anyone with the link&apos; শেয়ার পারমিশন চালু আছে কিনা নিশ্চিত করুন।
+            </p>
           </div>
         </div>
       )}

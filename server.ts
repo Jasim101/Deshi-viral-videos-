@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
+import { Readable } from "stream";
 import * as archiverModule from "archiver";
 
 const app = express();
@@ -79,15 +80,21 @@ const hashPassword = (password: string, salt: string): string => {
 
 const initAuth = (): AuthConfig => {
   const envPass = process.env.ADMIN_PASSWORD;
+  const envTgId = process.env.ADMIN_TELEGRAM_ID ? process.env.ADMIN_TELEGRAM_ID.trim() : "";
   const existing = readJSON<AuthConfig | null>(AUTH_FILE, null);
 
   if (existing && existing.hash && existing.salt && existing.tokenSecret) {
+    if (envTgId && !existing.adminTelegramId) {
+      existing.adminTelegramId = envTgId;
+      writeJSON(AUTH_FILE, existing);
+    }
     // If environment variable is explicitly provided and different, env takes priority
     if (envPass) {
       const envHash = hashPassword(envPass, existing.salt);
       if (envHash !== existing.hash) {
         const newSalt = crypto.randomBytes(32).toString("hex");
         const updated: AuthConfig = {
+          ...existing,
           salt: newSalt,
           hash: hashPassword(envPass, newSalt),
           tokenSecret: crypto.randomBytes(32).toString("hex"),
@@ -110,6 +117,7 @@ const initAuth = (): AuthConfig => {
     tokenSecret: crypto.randomBytes(32).toString("hex"),
     isDefault: !envPass,
     lastChanged: Date.now(),
+    adminTelegramId: envTgId || "",
   };
   writeJSON(AUTH_FILE, initialAuth);
   return initialAuth;
@@ -185,6 +193,19 @@ app.get("/api/config", (_req: Request, res: Response) => {
     const s = stats[v.id] || {};
     v.views = (+v.views || 0) + (s.views || 0);
     v.likes = (+v.likes || 0) + (s.likes || 0);
+    if (v.src) {
+      const gmatch = String(v.src).match(
+        /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^&]+&)*id=)|docs\.google\.com\/(?:file\/d\/|open\?id=))([a-zA-Z0-9_-]{20,})/i
+      );
+      if (gmatch && gmatch[1]) {
+        v.src = `/api/stream-drive?id=${gmatch[1]}`;
+      } else if (/dropbox\.com\//i.test(v.src)) {
+        if (v.src.includes("dl=0")) v.src = v.src.replace("dl=0", "raw=1");
+        else if (!v.src.includes("raw=1") && !v.src.includes("dl=1")) {
+          v.src += (v.src.includes("?") ? "&" : "?") + "raw=1";
+        }
+      }
+    }
   });
   res.setHeader("Cache-Control", "no-store");
   res.json(cfg);
@@ -205,7 +226,7 @@ app.get("/api/login-info", (_req: Request, res: Response) => {
 
 // GET /api/check-admin-access (Check if a given Telegram User ID is authorized admin)
 app.get("/api/check-admin-access", (req: Request, res: Response) => {
-  const tgId = req.query.tgId ? String(req.query.tgId).trim() : "";
+  const tgId = req.query.tgId ? String(req.query.tgId).trim().replace(/^@/, "") : "";
   const configuredAdminId = authData.adminTelegramId ? String(authData.adminTelegramId).trim() : "";
 
   // If no Telegram ID is configured, allow (open setup)
@@ -214,7 +235,7 @@ app.get("/api/check-admin-access", (req: Request, res: Response) => {
   }
 
   // Check if tgId matches configured ID(s)
-  const allowedList = configuredAdminId.split(",").map((s) => s.trim()).filter(Boolean);
+  const allowedList = configuredAdminId.split(/[\s,]+/).map((s) => s.trim().replace(/^@/, "")).filter(Boolean);
   const isMatch = Boolean(tgId && allowedList.includes(tgId));
 
   res.setHeader("Cache-Control", "no-store");
@@ -224,11 +245,46 @@ app.get("/api/check-admin-access", (req: Request, res: Response) => {
   });
 });
 
-// POST /api/login (With exponential backoff and lockout)
+// POST /api/emergency-unlock (Admin emergency unlock & Telegram ID re-bind)
+app.post("/api/emergency-unlock", async (req: Request, res: Response) => {
+  const { password, telegramUserId } = req.body || {};
+  if (!password || !verifyPassword(password)) {
+    return res.status(401).json({ error: "মাস্টার পাসওয়ার্ড ভুল হয়েছে!" });
+  }
+
+  if (telegramUserId) {
+    const cleanId = String(telegramUserId).trim().replace(/^@/, "");
+    const allowed = (authData.adminTelegramId || "")
+      .split(/[\s,]+/)
+      .map((s) => s.trim().replace(/^@/, ""))
+      .filter(Boolean);
+    if (!allowed.includes(cleanId)) {
+      allowed.push(cleanId);
+    }
+    authData.adminTelegramId = Array.from(new Set(allowed)).join(",");
+  } else {
+    authData.adminTelegramId = "";
+  }
+  writeJSON(AUTH_FILE, authData);
+
+  const exp = Date.now() + 24 * 3600 * 1000;
+  const token = `${exp}.${signToken(exp)}`;
+
+  return res.json({
+    ok: true,
+    token,
+    adminTelegramId: authData.adminTelegramId,
+    message: "অ্যাডমিন অ্যাক্সেস সফলভাবে আনলক ও আপডেট করা হয়েছে!",
+  });
+});
+
+// POST /api/login (With exponential backoff, master password authority, and lockout protection)
 app.post("/api/login", async (req: Request, res: Response) => {
   const ip = getClientIp(req);
-  const record = loginTracker[ip] || { fails: 0, lockedUntil: 0, lastAttempt: 0 };
+  const record = loginTracker[ip] || { fails: 0, lockedUntil: 0, lastAttempt: nowSafe() };
   const now = Date.now();
+
+  function nowSafe() { return Date.now(); }
 
   // Check if IP is currently locked out
   if (now < record.lockedUntil) {
@@ -239,29 +295,13 @@ app.post("/api/login", async (req: Request, res: Response) => {
     });
   }
 
-  const { password, telegramUserId } = req.body || {};
+  const { password, telegramUserId, forceMasterUnlock } = req.body || {};
   if (!password || typeof password !== "string") {
     return res.status(400).json({ error: "পাসওয়ার্ড প্রদান করুন" });
   }
 
-  // If Telegram ID Lock is enabled, enforce matching telegram user ID
-  if (authData.adminTelegramId && String(authData.adminTelegramId).trim() !== "") {
-    const allowedList = String(authData.adminTelegramId)
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (telegramUserId) {
-      if (!allowedList.includes(String(telegramUserId).trim())) {
-        return res.status(403).json({
-          error: "অ্যাক্সেস ডিনাইড: আপনার টেলিগ্রাম অ্যাকাউন্টটি এই বটের অনুমোদিত অ্যাডমিন আইডি নয়!",
-        });
-      }
-    }
-  }
-
   // Artificial jitter delay to prevent rapid-fire brute-force attacks
-  await new Promise((r) => setTimeout(r, 200 + Math.random() * 150));
+  await new Promise((r) => setTimeout(r, 150 + Math.random() * 100));
 
   const isMatch = verifyPassword(password);
   record.lastAttempt = now;
@@ -296,6 +336,32 @@ app.post("/api/login", async (req: Request, res: Response) => {
     });
   }
 
+  // Password IS VALID! Check Telegram ID Lock
+  if (authData.adminTelegramId && String(authData.adminTelegramId).trim() !== "") {
+    const allowedList = String(authData.adminTelegramId)
+      .split(/[\s,]+/)
+      .map((s) => s.trim().replace(/^@/, ""))
+      .filter(Boolean);
+
+    if (telegramUserId) {
+      const cleanTg = String(telegramUserId).trim().replace(/^@/, "");
+      if (!allowedList.includes(cleanTg)) {
+        if (forceMasterUnlock) {
+          // Admin explicitly requested to add/switch their current Telegram ID with valid master password
+          allowedList.push(cleanTg);
+          authData.adminTelegramId = Array.from(new Set(allowedList)).join(",");
+          writeJSON(AUTH_FILE, authData);
+        } else {
+          return res.status(403).json({
+            canUnlockWithMaster: true,
+            currentTgId: cleanTg,
+            error: `আপনার টেলিগ্রাম আইডি (${cleanTg}) অনুমোদিত তালিকায় নেই। মাস্টার পাসওয়ার্ড সঠিক হয়েছে! আপনি চাইলে 'এই আইডি যুক্ত করুন' চেপে প্রবেশ করতে পারেন।`,
+          });
+        }
+      }
+    }
+  }
+
   // Login success -> reset fail counter for this IP
   loginTracker[ip] = { fails: 0, lockedUntil: 0, lastAttempt: now };
   const exp = now + 24 * 3600 * 1000; // Token valid for 24 hours
@@ -304,6 +370,7 @@ app.post("/api/login", async (req: Request, res: Response) => {
   return res.json({
     token,
     isDefaultPassword: authData.isDefault,
+    adminTelegramId: authData.adminTelegramId || "",
     message: "লগইন সফল হয়েছে",
   });
 });
@@ -339,14 +406,22 @@ app.get("/api/admin/auth-status", requireAuth, (req: Request, res: Response) => 
 // POST /api/admin/set-telegram-id (Configure Telegram ID Lock)
 app.post("/api/admin/set-telegram-id", requireAuth, (req: Request, res: Response) => {
   const { telegramUserId } = req.body || {};
-  authData.adminTelegramId = telegramUserId ? String(telegramUserId).trim() : "";
+  let cleanId = "";
+  if (telegramUserId) {
+    cleanId = String(telegramUserId)
+      .split(/[\s,]+/)
+      .map((s) => s.trim().replace(/^@/, ""))
+      .filter(Boolean)
+      .join(",");
+  }
+  authData.adminTelegramId = cleanId;
   writeJSON(AUTH_FILE, authData);
 
   return res.json({
     ok: true,
     adminTelegramId: authData.adminTelegramId,
     message: authData.adminTelegramId
-      ? `অ্যাডমিন অ্যাক্সেস শুধুমাত্র টেলিগ্রাম আইডি: ${authData.adminTelegramId} এর সাথে লক করা হয়েছে।`
+      ? `অ্যাডমিন অ্যাক্সেস টেলিগ্রাম আইডি: ${authData.adminTelegramId} এর সাথে লক করা হয়েছে।`
       : "টেলিগ্রাম আইডি লক তুলে নেওয়া হয়েছে।",
   });
 });
@@ -364,7 +439,7 @@ app.post("/api/admin/change-password", requireAuth, (req: Request, res: Response
   }
 
   if (typeof newPassword !== "string" || newPassword.length < 8) {
-    return res.status(400).json({ error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" });
+    return res.status(400).json({ error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে باشد।" });
   }
 
   if (newPassword === "admin123" || newPassword === currentPassword) {
@@ -377,6 +452,7 @@ app.post("/api/admin/change-password", requireAuth, (req: Request, res: Response
   const newTokenSecret = crypto.randomBytes(32).toString("hex");
 
   authData = {
+    ...authData,
     salt: newSalt,
     hash: newHash,
     tokenSecret: newTokenSecret,
@@ -436,6 +512,140 @@ app.post("/api/stat", (req: Request, res: Response) => {
   return res.json({ ok: true });
 });
 
+// --- GOOGLE DRIVE & DROPBOX VIDEO STREAMING PROXY ---
+// Supports HTTP 206 Partial Content, Range headers, seeking, and CORS bypass
+
+app.get("/api/stream-drive", async (req: Request, res: Response) => {
+  const fileId = req.query.id ? String(req.query.id).trim() : "";
+  if (!fileId || !/^[a-zA-Z0-9_-]{15,}$/.test(fileId)) {
+    return res.status(400).json({ error: "সঠিক গুগল ড্রাইভ ফাইল আইডি পাওয়া যায়নি" });
+  }
+
+  const targetUrl = `https://drive.google.com/uc?export=download&id=${fileId}&confirm=t`;
+
+  try {
+    const rangeHeader = req.headers.range;
+    const fetchHeaders: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    };
+    if (rangeHeader) fetchHeaders["Range"] = rangeHeader;
+
+    let upstream = await fetch(targetUrl, {
+      headers: fetchHeaders,
+      redirect: "follow",
+    });
+
+    const ct = upstream.headers.get("content-type") || "";
+    // If Google returned an HTML page (confirmation required for large files > 100MB)
+    if (ct.includes("text/html")) {
+      const html = await upstream.text();
+      const confirmMatch =
+        html.match(/href="(\/uc\?export=download[^"]+)"/i) ||
+        html.match(/"(\/uc\?export=download[^"]+)"/i);
+
+      if (confirmMatch && confirmMatch[1]) {
+        const confirmUrl = `https://drive.google.com${confirmMatch[1].replace(/&amp;/g, "&")}`;
+        const cookies = upstream.headers.get("set-cookie");
+        const nextHeaders: Record<string, string> = { ...fetchHeaders };
+        if (cookies) nextHeaders["Cookie"] = cookies;
+
+        upstream = await fetch(confirmUrl, {
+          headers: nextHeaders,
+          redirect: "follow",
+        });
+      } else {
+        return res.status(403).json({
+          error:
+            "গুগল ড্রাইভ ফাইলটি পাবলিক নয় বা এক্সেস অনুমতি নেই। দয়া করে ফাইলে 'Anyone with the link' (যেকোনো ব্যক্তি যার কাছে লিংক আছে) শেয়ার পারমিশন দিন।",
+        });
+      }
+    }
+
+    res.status(upstream.status);
+    const passHeaders = ["content-type", "content-length", "content-range", "accept-ranges"];
+    passHeaders.forEach((h) => {
+      const val = upstream.headers.get(h);
+      if (val) res.setHeader(h, val);
+    });
+
+    if (!res.getHeader("content-type") || String(res.getHeader("content-type")).includes("text/html")) {
+      res.setHeader("Content-Type", "video/mp4");
+    }
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    if (upstream.body) {
+      Readable.fromWeb(upstream.body as any).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err: any) {
+    console.error("Stream drive error:", err);
+    if (!res.headersSent) {
+      res.status(502).json({ error: "গুগল ড্রাইভ ভিডিও স্ট্রিম করতে সমস্যা হয়েছে।" });
+    }
+  }
+});
+
+app.get("/api/stream-video", async (req: Request, res: Response) => {
+  const target = req.query.url ? String(req.query.url).trim() : "";
+  if (!target || !/^https?:\/\//i.test(target)) {
+    return res.status(400).json({ error: "সঠিক ভিডিও URL দিন" });
+  }
+
+  // If Google Drive, redirect to stream-drive
+  const gdriveMatch = target.match(
+    /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^&]+&)*id=)|docs\.google\.com\/(?:file\/d\/|open\?id=))([a-zA-Z0-9_-]{20,})/i
+  );
+  if (gdriveMatch && gdriveMatch[1]) {
+    return res.redirect(307, `/api/stream-drive?id=${gdriveMatch[1]}`);
+  }
+
+  let streamUrl = target;
+  if (/dropbox\.com\//i.test(streamUrl)) {
+    if (streamUrl.includes("dl=0")) streamUrl = streamUrl.replace("dl=0", "raw=1");
+    else if (!streamUrl.includes("raw=1") && !streamUrl.includes("dl=1")) {
+      streamUrl += (streamUrl.includes("?") ? "&" : "?") + "raw=1";
+    }
+  }
+
+  try {
+    const rangeHeader = req.headers.range;
+    const fetchHeaders: Record<string, string> = {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    };
+    if (rangeHeader) fetchHeaders["Range"] = rangeHeader;
+
+    const upstream = await fetch(streamUrl, {
+      headers: fetchHeaders,
+      redirect: "follow",
+    });
+
+    res.status(upstream.status);
+    const passHeaders = ["content-type", "content-length", "content-range", "accept-ranges"];
+    passHeaders.forEach((h) => {
+      const val = upstream.headers.get(h);
+      if (val) res.setHeader(h, val);
+    });
+
+    if (!res.getHeader("content-type")) res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Accept-Ranges", "bytes");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+
+    if (upstream.body) {
+      Readable.fromWeb(upstream.body as any).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err: any) {
+    if (!res.headersSent) {
+      res.status(502).json({ error: "ভিডিও স্ট্রিম করতে ব্যর্থ হয়েছে।" });
+    }
+  }
+});
+
 // GET /api/admin/config
 app.get("/api/admin/config", requireAuth, (_req: Request, res: Response) => {
   res.json(readJSON(CFG, {}));
@@ -462,11 +672,32 @@ app.put("/api/admin/config", requireAuth, (req: Request, res: Response) => {
     }
   }
 
-  // Sanitize URLs to prevent XSS (no javascript: or data:text/html)
+  // Auto-normalize cloud URLs (Google Drive / Dropbox)
+  const normalizeMedia = (url: string) => {
+    if (!url) return "";
+    let clean = String(url).trim();
+    // Google Drive
+    const gmatch = clean.match(
+      /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^&]+&)*id=)|docs\.google\.com\/(?:file\/d\/|open\?id=))([a-zA-Z0-9_-]{20,})/i
+    );
+    if (gmatch && gmatch[1]) {
+      return `/api/stream-drive?id=${gmatch[1]}`;
+    }
+    // Dropbox
+    if (/dropbox\.com\//i.test(clean)) {
+      if (clean.includes("dl=0")) return clean.replace("dl=0", "raw=1");
+      if (!clean.includes("raw=1") && !clean.includes("dl=1")) {
+        return clean + (clean.includes("?") ? "&" : "?") + "raw=1";
+      }
+    }
+    return clean;
+  };
+
+  // Sanitize URLs to prevent XSS (allows http, https, /uploads/, /api/, blob:)
   const sanitizeUrl = (url: string) => {
     if (!url) return "";
-    const clean = String(url).trim();
-    if (/^(https?:\/\/|\/uploads\/|blob:)/i.test(clean)) return clean;
+    const clean = normalizeMedia(String(url).trim());
+    if (/^(https?:\/\/|\/uploads\/|\/api\/|blob:)/i.test(clean)) return clean;
     return "";
   };
 
@@ -902,12 +1133,26 @@ http.createServer(async (req, res) => {
       }
       fails[ip] = { n: 0, until: 0 };
       const exp = Date.now() + 864e5;
-      return send(res, 200, { token: exp + "." + sign(exp), isDefaultPassword: auth.isDefault });
+      return send(res, 200, { token: exp + "." + sign(exp), isDefaultPassword: auth.isDefault, adminTelegramId: auth.adminTelegramId || "" });
+    }
+    if (p === "/api/emergency-unlock" && req.method === "POST") {
+      const { password, telegramUserId } = await body(req);
+      const cand = hashPW(String(password || ""), auth.salt);
+      if (cand !== auth.hash) return send(res, 401, { error: "মাস্টার পাসওয়ার্ড ভুল হয়েছে।" });
+      if (telegramUserId) {
+        const cleanId = String(telegramUserId).trim().replace(/^@/, "");
+        const allowed = (auth.adminTelegramId || "").split(/[\s,]+/).map(s => s.trim().replace(/^@/, "")).filter(Boolean);
+        if (!allowed.includes(cleanId)) allowed.push(cleanId);
+        auth.adminTelegramId = Array.from(new Set(allowed)).join(",");
+      } else { auth.adminTelegramId = ""; }
+      writeJSON(AUTH, auth);
+      const exp = Date.now() + 864e5;
+      return send(res, 200, { ok: true, token: exp + "." + sign(exp), adminTelegramId: auth.adminTelegramId, message: "আনলক সফল।" });
     }
     if (p === "/api/admin/set-telegram-id" && req.method === "POST") {
       if (!authed(req)) return send(res, 401, { error: "login" });
       const { telegramUserId } = await body(req);
-      auth.adminTelegramId = telegramUserId ? String(telegramUserId).trim() : "";
+      auth.adminTelegramId = telegramUserId ? String(telegramUserId).split(/[\s,]+/).map(s => s.trim().replace(/^@/, "")).filter(Boolean).join(",") : "";
       writeJSON(AUTH, auth);
       return send(res, 200, { ok: true, adminTelegramId: auth.adminTelegramId, message: "টেলিগ্রাম আইডি আপডেট করা হয়েছে।" });
     }
@@ -922,7 +1167,7 @@ http.createServer(async (req, res) => {
       if (cand !== auth.hash) return send(res, 401, { error: "বর্তমান পাসওয়ার্ড ভুল হয়েছে।" });
       if (!newPassword || newPassword.length < 8) return send(res, 400, { error: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।" });
       const ns = crypto.randomBytes(32).toString("hex");
-      auth = { salt: ns, hash: hashPW(newPassword, ns), tokenSecret: crypto.randomBytes(32).toString("hex"), isDefault: false, lastChanged: Date.now() };
+      auth = { ...auth, salt: ns, hash: hashPW(newPassword, ns), tokenSecret: crypto.randomBytes(32).toString("hex"), isDefault: false, lastChanged: Date.now() };
       writeJSON(AUTH, auth);
       const exp = Date.now() + 864e5;
       return send(res, 200, { ok: true, token: exp + "." + sign(exp), message: "পাসওয়ার্ড পরিবর্তিত হয়েছে।" });
