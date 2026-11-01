@@ -45,7 +45,8 @@
     "unlockTitle": "🔒 ভিডিও আনলক করুন",
     "unlockText": "আরও {n}টি বিজ্ঞাপন দেখলে ভিডিওটি চালু হবে।",
     "watchButton": "বিজ্ঞাপন দেখুন",
-    "cancelButton": "বাতিল"
+    "cancelButton": "বাতিল",
+    "unlockDuration": "session"
   },
   "videos": [
     {
