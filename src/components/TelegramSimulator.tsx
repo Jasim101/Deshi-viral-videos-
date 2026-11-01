@@ -22,7 +22,12 @@ import {
   Expand,
   Shrink,
 } from "lucide-react";
-import { normalizeMediaUrl, extractGoogleDriveId } from "../utils/mediaUtils";
+import {
+  normalizeMediaUrl,
+  extractGoogleDriveId,
+  isTeraboxUrl,
+  getTeraboxEmbedUrl,
+} from "../utils/mediaUtils";
 
 interface TelegramSimulatorProps {
   config: AppConfig;
@@ -189,8 +194,9 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
     video.views = (video.views || 0) + 1;
     recordStat(video.id, "view");
     setVideoError(false);
-    setVideoLoading(true);
-    setPlayerMode("standard");
+    const isTera = isTeraboxUrl(video.src);
+    setVideoLoading(!isTera);
+    setPlayerMode(isTera ? "cloud_embed" : "standard");
     setModalState({ type: "video_player", video });
   };
 
@@ -764,6 +770,19 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   <span className="sm:hidden">⚡ ক্লাউড</span>
                 </button>
               )}
+
+              {isTeraboxUrl(modalState.video.src) && (
+                <a
+                  href={modalState.video.src}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="py-1 px-2.5 rounded-full text-[11px] font-bold flex items-center gap-1 bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 cursor-pointer shadow transition-all"
+                  title="টেরাবক্স পেজে সরাসরি খুলুন"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-blue-400" />
+                  <span>📦 টেরাবক্স</span>
+                </a>
+              )}
               <button
                 onClick={() => setVideoFit(videoFit === "contain" ? "cover" : "contain")}
                 className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
@@ -781,6 +800,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             </div>
           </div>
 
+          {/* Central Video Viewport */}
           <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none w-full min-h-0">
             {/* Initial video loading indicator (only before first play, pointer-events-none so controls never freeze) */}
             {videoLoading && !videoError && playerMode === "standard" && (
@@ -790,7 +810,19 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
               </div>
             )}
 
-            {playerMode === "cloud_embed" && extractGoogleDriveId(modalState.video.src) ? (
+            {isTeraboxUrl(modalState.video.src) ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-black p-1 sm:p-2">
+                <iframe
+                  src={getTeraboxEmbedUrl(modalState.video.src) || modalState.video.src}
+                  className={`w-full h-full border-0 rounded-lg max-h-[82vh] transition-all duration-200 ${
+                    videoFit === "cover" ? "scale-105" : ""
+                  }`}
+                  allow="autoplay; fullscreen; encrypted-media"
+                  allowFullScreen
+                  title={modalState.video.title}
+                />
+              </div>
+            ) : playerMode === "cloud_embed" && extractGoogleDriveId(modalState.video.src) ? (
               <div className="w-full h-full flex flex-col items-center justify-center bg-black p-1 sm:p-2">
                 <iframe
                   src={`https://drive.google.com/file/d/${extractGoogleDriveId(modalState.video.src)}/preview`}
