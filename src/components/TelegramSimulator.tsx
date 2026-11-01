@@ -782,11 +782,11 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
           </div>
 
           <div className="flex-1 relative flex items-center justify-center bg-black overflow-hidden select-none w-full min-h-0">
+            {/* Initial video loading indicator (only before first play, pointer-events-none so controls never freeze) */}
             {videoLoading && !videoError && playerMode === "standard" && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/60 backdrop-blur-sm pointer-events-auto p-4 text-center">
-                <div className="w-10 h-10 border-4 border-pink-500 border-t-transparent rounded-full animate-spin mb-3" />
-                <span className="text-xs text-white/90 font-medium mb-1">ভিডিও দ্রুত লোড হচ্ছে...</span>
-                <span className="text-[11px] text-white/60">বাফারিং ছাড়া স্ট্রিমিং প্রস্তুত করা হচ্ছে</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/75 pointer-events-none p-4 text-center">
+                <div className="w-9 h-9 border-3 border-pink-500 border-t-transparent rounded-full animate-spin mb-2.5" />
+                <span className="text-xs text-white/90 font-medium">ভিডিও চালু হচ্ছে...</span>
               </div>
             )}
 
@@ -807,7 +807,25 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
                 <h4 className="font-bold text-sm text-red-300 mb-1">ভিডিও প্লে হতে সমস্যা হয়েছে</h4>
                 <p className="text-xs text-white/70 mb-3 leading-relaxed">
-                  ভিডিও লিঙ্কটি সাময়িকভাবে উপলব্ধ নয় অথবা পারমিশন প্রয়োজন।
+                  ভিডিও লিঙ্কটি সাময়িকভাবে উপলব্ধ নয় অথবা অ্যাক্সেস পারমিশন প্রয়োজন।
+                </p>
+
+                {extractGoogleDriveId(modalState.video.src) && (
+                  <button
+                    onClick={() => {
+                      setVideoError(false);
+                      setVideoLoading(false);
+                      setPlayerMode("cloud_embed");
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-pink-600 text-white text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-1.5 shadow mb-3"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>⚡ সরাসরি গুগল ক্লাউড প্লেয়ারে চালান (Instant Play)</span>
+                  </button>
+                )}
+
+                <p className="text-[11px] text-amber-300/80 mb-4 bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20 text-left">
+                  💡 <b>পরামর্শ:</b> গুগল ড্রাইভ ফাইল হলে ড্রাইভ ওপেন করে Share &rarr; General access এ &apos;Anyone with the link&apos; (যেকোনো ব্যক্তি যার কাছে লিংক আছে) পারমিশন দিয়ে রাখুন।
                 </p>
                 <button
                   onClick={() => {
@@ -830,12 +848,15 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 src={normalizeMediaUrl(modalState.video.src)}
                 controls
                 autoPlay
-                preload="auto"
+                preload="metadata"
                 playsInline
                 webkit-playsinline="true"
-                onWaiting={() => setVideoLoading(true)}
-                onPlaying={() => setVideoLoading(false)}
+                onLoadedData={() => setVideoLoading(false)}
                 onCanPlay={() => setVideoLoading(false)}
+                onPlaying={() => setVideoLoading(false)}
+                onTimeUpdate={() => {
+                  if (videoLoading) setVideoLoading(false);
+                }}
                 onError={() => {
                   setVideoError(true);
                   setVideoLoading(false);
