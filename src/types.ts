@@ -33,6 +33,7 @@ export interface AdConfig {
   unlockText: string;
   watchButton: string;
   cancelButton: string;
+  unlockDuration?: "session" | "forever";
 }
 
 export interface VideoItem {
