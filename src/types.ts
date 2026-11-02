@@ -25,9 +25,11 @@ export interface TabConfig {
 }
 
 export interface AdConfig {
-  provider: "demo" | "adsgram";
+  provider: "demo" | "adsgram" | "adsterra";
   demoSeconds: number;
   blockId: string;
+  adsterraUrl?: string;
+  adsterraScript?: string;
   lockedLabel: string;
   unlockTitle: string;
   unlockText: string;
