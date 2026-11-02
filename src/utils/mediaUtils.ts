@@ -1,17 +1,20 @@
 /**
- * Media URL normalizer and streamer helpers for Google Drive, Dropbox, Terabox and CDN sources
+ * Media URL normalizer and streamer helpers for Google Drive, Dropbox, Terabox, and CDN sources
  */
 
 export function extractGoogleDriveId(url: string): string | null {
   if (!url) return null;
   const clean = url.trim();
 
+  // Match /api/stream-drive?id={id}
   const streamMatch = clean.match(/\/api\/stream-drive\?id=([a-zA-Z0-9_-]{15,})/i);
   if (streamMatch && streamMatch[1]) return streamMatch[1];
 
+  // Match /api/drive-embed?id={id}
   const embedMatch = clean.match(/\/api\/drive-embed\?id=([a-zA-Z0-9_-]{15,})/i);
   if (embedMatch && embedMatch[1]) return embedMatch[1];
 
+  // Match drive.google.com/file/d/{id}, drive.google.com/open?id={id}, drive.google.com/uc?id={id}, docs.google.com/file/d/{id}
   const match = clean.match(
     /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:[^&]+&)*id=)|docs\.google\.com\/(?:file\/d\/|open\?id=))([a-zA-Z0-9_-]{15,})/i
   );
@@ -26,6 +29,12 @@ export function getGoogleDriveEmbedUrl(urlOrId: string): string | null {
   const id = extractGoogleDriveId(urlOrId);
   if (!id) return null;
   return `https://drive.google.com/file/d/${id}/preview`;
+}
+
+export function getGoogleDriveThumbnailUrl(urlOrId: string): string | null {
+  const id = extractGoogleDriveId(urlOrId);
+  if (!id) return null;
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
 }
 
 export function isDropboxUrl(url: string): boolean {
@@ -72,18 +81,15 @@ export function normalizeMediaUrl(url: string): string {
   if (!url) return "";
   const clean = url.trim();
 
-  // 1. Google Drive -> Convert to direct backend streaming proxy
   const driveId = extractGoogleDriveId(clean);
   if (driveId) {
     return `/api/stream-drive?id=${driveId}`;
   }
 
-  // 2. Dropbox -> Convert directly to dl.dropboxusercontent.com CDN URL
   if (isDropboxUrl(clean)) {
     return getDropboxDirectUrl(clean);
   }
 
-  // 3. OneDrive -> ensure download=1
   if (/1drv\.ms|onedrive\.live\.com/i.test(clean)) {
     if (clean.includes("resid=") && !clean.includes("download=1")) {
       const sep = clean.includes("?") ? "&" : "?";
