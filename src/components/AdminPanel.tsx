@@ -32,7 +32,13 @@ import {
   Play,
   Sparkles,
 } from "lucide-react";
-import { normalizeMediaUrl, isGoogleDriveUrl, isDropboxUrl } from "../utils/mediaUtils";
+import {
+  normalizeMediaUrl,
+  isGoogleDriveUrl,
+  isDropboxUrl,
+  isTeraboxUrl,
+  getGoogleDriveThumbnailUrl,
+} from "../utils/mediaUtils";
 
 interface AdminPanelProps {
   currentConfig: AppConfig;
@@ -206,11 +212,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         body: JSON.stringify({ telegramUserId: idToSet.trim() }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "আইডি সেট করা যায়নি");
+      if (!res.ok) throw new Error(data.error || "à¦†à¦‡à¦¡à¦¿ à¦¸à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
       setAuthStatus((prev: any) => ({ ...prev, adminTelegramId: data.adminTelegramId }));
       setTelegramMsg({
         type: "success",
-        text: data.message || "টেলিগ্রাম আইডি লক সফলভাবে আপডেট করা হয়েছে!",
+        text: data.message || "à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿ à¦²à¦• à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦†à¦ªà¦¡à§‡à¦Ÿ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡!",
       });
       fetch("/api/login-info")
         .then((r) => r.json())
@@ -219,7 +225,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     } catch (err: any) {
       setTelegramMsg({
         type: "error",
-        text: err.message || "টেলিগ্রাম আইডি সেভ করতে ব্যর্থ হয়েছে",
+        text: err.message || "à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿ à¦¸à§‡à¦­ à¦•à¦°à¦¤à§‡ à¦¬à§à¦¯à¦°à§à¦¥ à¦¹à¦¯à¦¼à§‡à¦›à§‡",
       });
     } finally {
       setIsSavingTelegramId(false);
@@ -229,11 +235,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleLogin = async (e?: React.FormEvent, forceUnlock = false) => {
     if (e) e.preventDefault();
     if (!password) {
-      setLoginError("পাসওয়ার্ড প্রদান করুন");
+      setLoginError("à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà§à¦°à¦¦à¦¾à¦¨ à¦•à¦°à§à¦¨");
       return;
     }
     if (retryAfterSeconds > 0) {
-      setLoginError(`লকআউট সক্রিয় রয়েছে! আর ${retryAfterSeconds} সেকেন্ড পর চেষ্টা করুন।`);
+      setLoginError(`à¦²à¦•à¦†à¦‰à¦Ÿ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼ à¦°à¦¯à¦¼à§‡à¦›à§‡! à¦†à¦° ${retryAfterSeconds} à¦¸à§‡à¦•à§‡à¦¨à§à¦¡ à¦ªà¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤`);
       return;
     }
 
@@ -261,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           setCanMasterUnlock(true);
           setLoginError(data.error);
         } else {
-          setLoginError(data.error || "পাসওয়ার্ড ভুল হয়েছে");
+          setLoginError(data.error || "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦­à§à¦² à¦¹à¦¯à¦¼à§‡à¦›à§‡");
         }
         setIsLoggingIn(false);
         return;
@@ -283,7 +289,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       fetchAuthStatus(data.token);
     } catch {
-      setLoginError("সার্ভারের সাথে যোগাযোগ করা যায়নি");
+      setLoginError("à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
     } finally {
       setIsLoggingIn(false);
     }
@@ -292,7 +298,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleEmergencyUnlock = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!emergencyPw) {
-      setEmergencyError("মাস্টার পাসওয়ার্ড প্রদান করুন");
+      setEmergencyError("à¦®à¦¾à¦¸à§à¦Ÿà¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà§à¦°à¦¦à¦¾à¦¨ à¦•à¦°à§à¦¨");
       return;
     }
 
@@ -311,7 +317,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const data = await res.json();
 
       if (!res.ok) {
-        setEmergencyError(data.error || "মাস্টার পাসওয়ার্ড ভুল হয়েছে");
+        setEmergencyError(data.error || "à¦®à¦¾à¦¸à§à¦Ÿà¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦­à§à¦² à¦¹à¦¯à¦¼à§‡à¦›à§‡");
         return;
       }
 
@@ -330,7 +336,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       }
       fetchAuthStatus(data.token);
     } catch {
-      setEmergencyError("সার্ভারের সাথে যোগাযোগ করা যায়নি");
+      setEmergencyError("à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦¯à§‹à¦—à¦¾à¦¯à§‹à¦— à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
     } finally {
       setEmergencyLoading(false);
     }
@@ -351,19 +357,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     setPwMsg(null);
 
     if (!currentPw || !newPw || !confirmPw) {
-      setPwMsg({ type: "error", text: "সবগুলো ঘর পূরণ করুন" });
+      setPwMsg({ type: "error", text: "à¦¸à¦¬à¦—à§à¦²à§‹ à¦˜à¦° à¦ªà§‚à¦°à¦£ à¦•à¦°à§à¦¨" });
       return;
     }
     if (newPw.length < 8) {
-      setPwMsg({ type: "error", text: "নতুন পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে" });
+      setPwMsg({ type: "error", text: "à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦•à¦®à¦ªà¦•à§à¦·à§‡ à§® à¦…à¦•à§à¦·à¦°à§‡à¦° à¦¹à¦¤à§‡ à¦¹à¦¬à§‡" });
       return;
     }
     if (newPw !== confirmPw) {
-      setPwMsg({ type: "error", text: "নতুন পাসওয়ার্ড দুবার একই হতে হবে" });
+      setPwMsg({ type: "error", text: "à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à§à¦¬à¦¾à¦° à¦à¦•à¦‡ à¦¹à¦¤à§‡ à¦¹à¦¬à§‡" });
       return;
     }
     if (newPw === "admin123") {
-      setPwMsg({ type: "error", text: "ডিফল্ট 'admin123' ছাড়া অন্য শক্তিশালী পাসওয়ার্ড দিন" });
+      setPwMsg({ type: "error", text: "à¦¡à¦¿à¦«à¦²à§à¦Ÿ 'admin123' à¦›à¦¾à¦¡à¦¼à¦¾ à¦…à¦¨à§à¦¯ à¦¶à¦•à§à¦¤à¦¿à¦¶à¦¾à¦²à§€ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¨" });
       return;
     }
 
@@ -383,7 +389,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "পাসওয়ার্ড পরিবর্তন করা যায়নি");
+        throw new Error(data.error || "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
       }
 
       setToken(data.token);
@@ -393,18 +399,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       setConfirmPw("");
       setPwMsg({
         type: "success",
-        text: "✅ পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে! অন্য সব সেশন বাতিল করা হয়েছে।",
+        text: "âœ… à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦¹à¦¯à¦¼à§‡à¦›à§‡! à¦…à¦¨à§à¦¯ à¦¸à¦¬ à¦¸à§‡à¦¶à¦¨ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤",
       });
       fetchAuthStatus(data.token);
     } catch (err: any) {
-      setPwMsg({ type: "error", text: err.message || "পাসওয়ার্ড পরিবর্তন ব্যর্থ হয়েছে" });
+      setPwMsg({ type: "error", text: err.message || "à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦¬à§à¦¯à¦°à§à¦¥ à¦¹à¦¯à¦¼à§‡à¦›à§‡" });
     } finally {
       setIsChangingPw(false);
     }
   };
 
   const handleRevokeAllSessions = async () => {
-    if (!confirm("আপনি কি অন্য সকল ডিভাইস ও ব্রাউজারের সেশন লগআউট করে দিতে চান?")) return;
+    if (!confirm("à¦†à¦ªà¦¨à¦¿ à¦•à¦¿ à¦…à¦¨à§à¦¯ à¦¸à¦•à¦² à¦¡à¦¿à¦­à¦¾à¦‡à¦¸ à¦“ à¦¬à§à¦°à¦¾à¦‰à¦œà¦¾à¦°à§‡à¦° à¦¸à§‡à¦¶à¦¨ à¦²à¦—à¦†à¦‰à¦Ÿ à¦•à¦°à§‡ à¦¦à¦¿à¦¤à§‡ à¦šà¦¾à¦¨?")) return;
     try {
       const res = await fetch("/api/admin/revoke-sessions", {
         method: "POST",
@@ -413,18 +419,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       const data = await res.json();
       if (res.ok) {
         setToken(data.token);
-        alert("✅ অন্য সকল ডিভাইসের সক্রিয় সেশন সফলভাবে বাতিল করা হয়েছে।");
+        alert("âœ… à¦…à¦¨à§à¦¯ à¦¸à¦•à¦² à¦¡à¦¿à¦­à¦¾à¦‡à¦¸à§‡à¦° à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼ à¦¸à§‡à¦¶à¦¨ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡à¥¤");
       } else {
-        alert(data.error || "সেশন বাতিল করা যায়নি");
+        alert(data.error || "à¦¸à§‡à¦¶à¦¨ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
       }
     } catch {
-      alert("নেটওয়ার্ক ত্রুটি");
+      alert("à¦¨à§‡à¦Ÿà¦“à¦¯à¦¼à¦¾à¦°à§à¦• à¦¤à§à¦°à§à¦Ÿà¦¿");
     }
   };
 
   const markDirty = () => {
     setIsDirty(true);
-    setSaveStatus("● সেভ করা হয়নি");
+    setSaveStatus("â— à¦¸à§‡à¦­ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à¦¨à¦¿");
   };
 
   const updateConfigValue = (path: string, value: any) => {
@@ -458,7 +464,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const deleteItem = (arrayKey: "tabs" | "categories" | "videos", index: number) => {
-    if (!confirm("মুছে ফেলতে চান?")) return;
+    if (!confirm("à¦®à§à¦›à§‡ à¦«à§‡à¦²à¦¤à§‡ à¦šà¦¾à¦¨?")) return;
     markDirty();
     setCfg((prev) => {
       const clone = JSON.parse(JSON.stringify(prev));
@@ -504,7 +510,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     e.target.value = "";
 
     const progKey = `${videoIndex}-${field}`;
-    setUploadProgress((p) => ({ ...p, [progKey]: "আপলোড শুরু হচ্ছে..." }));
+    setUploadProgress((p) => ({ ...p, [progKey]: "à¦†à¦ªà¦²à§‹à¦¡ à¦¶à§à¦°à§ à¦¹à¦šà§à¦›à§‡..." }));
 
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `/api/upload?name=${encodeURIComponent(file.name)}`);
@@ -518,9 +524,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (evt.lengthComputable) {
         const pct = Math.round((evt.loaded / evt.total) * 100);
         if (pct < 100) {
-          setUploadProgress((p) => ({ ...p, [progKey]: `${pct}% আপলোড হচ্ছে...` }));
+          setUploadProgress((p) => ({ ...p, [progKey]: `${pct}% à¦†à¦ªà¦²à§‹à¦¡ à¦¹à¦šà§à¦›à§‡...` }));
         } else {
-          setUploadProgress((p) => ({ ...p, [progKey]: "১০০% আপলোড সম্পন্ন! সার্ভারে সংরক্ষণ ও যাচাই হচ্ছে..." }));
+          setUploadProgress((p) => ({ ...p, [progKey]: "à§§à§¦à§¦% à¦†à¦ªà¦²à§‹à¦¡ à¦¸à¦®à§à¦ªà¦¨à§à¦¨! à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦“ à¦¯à¦¾à¦šà¦¾à¦‡ à¦¹à¦šà§à¦›à§‡..." }));
         }
       }
     };
@@ -544,6 +550,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             if (field === "src") {
               const videoElement = document.createElement("video");
               videoElement.preload = "metadata";
+              videoElement.muted = true;
+              videoElement.playsInline = true;
               videoElement.onloadedmetadata = () => {
                 const s = Math.round(videoElement.duration);
                 if (isFinite(s)) {
@@ -556,15 +564,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     return c;
                   });
                 }
+                videoElement.currentTime = Math.min(1, (videoElement.duration || 2) / 2);
+              };
+
+              videoElement.onseeked = () => {
+                try {
+                  const canvas = document.createElement("canvas");
+                  canvas.width = Math.min(640, videoElement.videoWidth || 640);
+                  canvas.height = Math.min(360, videoElement.videoHeight || 360);
+                  const ctx = canvas.getContext("2d");
+                  if (ctx && canvas.width > 0 && canvas.height > 0) {
+                    ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                    setCfg((curr) => {
+                      const c = JSON.parse(JSON.stringify(curr));
+                      if (c.videos[videoIndex] && !c.videos[videoIndex].thumb) {
+                        c.videos[videoIndex].thumb = dataUrl;
+                      }
+                      return c;
+                    });
+                  }
+                } catch {}
                 URL.revokeObjectURL(videoElement.src);
               };
+
               videoElement.src = URL.createObjectURL(file);
             }
 
             return clone;
           });
 
-          setUploadProgress((p) => ({ ...p, [progKey]: "✅ আপলোড সফলভাবে সম্পন্ন হয়েছে!" }));
+          setUploadProgress((p) => ({ ...p, [progKey]: "âœ… à¦†à¦ªà¦²à§‹à¦¡ à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦¸à¦®à§à¦ªà¦¨à§à¦¨ à¦¹à¦¯à¦¼à§‡à¦›à§‡!" }));
           setTimeout(() => {
             setUploadProgress((p) => {
               const copy = { ...p };
@@ -573,23 +603,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             });
           }, 4000);
         } catch {
-          setUploadProgress((p) => ({ ...p, [progKey]: "❌ রেসপন্স প্রসেস করা যায়নি" }));
+          setUploadProgress((p) => ({ ...p, [progKey]: "âŒ à¦°à§‡à¦¸à¦ªà¦¨à§à¦¸ à¦ªà§à¦°à¦¸à§‡à¦¸ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿" }));
         }
       } else {
-        let msg = "আপলোড ব্যর্থ হয়েছে";
+        let msg = "à¦†à¦ªà¦²à§‹à¦¡ à¦¬à§à¦¯à¦°à§à¦¥ à¦¹à¦¯à¦¼à§‡à¦›à§‡";
         try {
           msg = JSON.parse(xhr.responseText).error || msg;
         } catch {}
-        setUploadProgress((p) => ({ ...p, [progKey]: `❌ ${msg}` }));
+        setUploadProgress((p) => ({ ...p, [progKey]: `âŒ ${msg}` }));
       }
     };
 
     xhr.ontimeout = () => {
-      setUploadProgress((p) => ({ ...p, [progKey]: "❌ টাইমআউট: ইন্টারনেটের গতি ধীর হওয়ায় আপলোড সম্পন্ন করা যায়নি।" }));
+      setUploadProgress((p) => ({ ...p, [progKey]: "âŒ à¦Ÿà¦¾à¦‡à¦®à¦†à¦‰à¦Ÿ: à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿà§‡à¦° à¦—à¦¤à¦¿ à¦§à§€à¦° à¦¹à¦“à¦¯à¦¼à¦¾à¦¯à¦¼ à¦†à¦ªà¦²à§‹à¦¡ à¦¸à¦®à§à¦ªà¦¨à§à¦¨ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿à¥¤" }));
     };
 
     xhr.onerror = () => {
-      setUploadProgress((p) => ({ ...p, [progKey]: "❌ নেটওয়ার্ক সমস্যা: সার্ভারের সাথে সংযোগ বিচ্ছিন্ন।" }));
+      setUploadProgress((p) => ({ ...p, [progKey]: "âŒ à¦¨à§‡à¦Ÿà¦“à¦¯à¦¼à¦¾à¦°à§à¦• à¦¸à¦®à¦¸à§à¦¯à¦¾: à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦¸à¦‚à¦¯à§‹à¦— à¦¬à¦¿à¦šà§à¦›à¦¿à¦¨à§à¦¨à¥¤" }));
     };
 
     xhr.send(file);
@@ -597,14 +627,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const handleSave = async () => {
     const isUploading = Object.values(uploadProgress).some(
-      (msg) => typeof msg === "string" && (msg.includes("হচ্ছে") || msg.includes("চলছে"))
+      (msg) => typeof msg === "string" && (msg.includes("à¦¹à¦šà§à¦›à§‡") || msg.includes("à¦šà¦²à¦›à§‡"))
     );
     if (isUploading) {
-      alert("⚠️ একটি ফাইল এখনো আপলোড হচ্ছে! অনুগ্রহ করে আপলোড শেষ হওয়া পর্যন্ত অপেক্ষা করে তারপর সেভ করুন।");
+      alert("âš ï¸ à¦à¦•à¦Ÿà¦¿ à¦«à¦¾à¦‡à¦² à¦à¦–à¦¨à§‹ à¦†à¦ªà¦²à§‹à¦¡ à¦¹à¦šà§à¦›à§‡! à¦…à¦¨à§à¦—à§à¦°à¦¹ à¦•à¦°à§‡ à¦†à¦ªà¦²à§‹à¦¡ à¦¶à§‡à¦· à¦¹à¦“à¦¯à¦¼à¦¾ à¦ªà¦°à§à¦¯à¦¨à§à¦¤ à¦…à¦ªà§‡à¦•à§à¦·à¦¾ à¦•à¦°à§‡ à¦¤à¦¾à¦°à¦ªà¦° à¦¸à§‡à¦­ à¦•à¦°à§à¦¨à¥¤");
       return;
     }
 
-    setSaveStatus("সেভ হচ্ছে...");
+    setSaveStatus("à¦¸à§‡à¦­ à¦¹à¦šà§à¦›à§‡...");
     try {
       const res = await fetch("/api/admin/config", {
         method: "PUT",
@@ -620,19 +650,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "সেভ করা যায়নি");
+        throw new Error(data.error || "à¦¸à§‡à¦­ à¦•à¦°à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿");
       }
 
       setRemovedFiles([]);
       setIsDirty(false);
-      setSaveStatus("✅ সফলভাবে সেভ হয়েছে!");
+      setSaveStatus("âœ… à¦¸à¦«à¦²à¦­à¦¾à¦¬à§‡ à¦¸à§‡à¦­ à¦¹à¦¯à¦¼à§‡à¦›à§‡!");
       onConfigUpdated(cfg);
 
       setTimeout(() => {
         setSaveStatus("");
       }, 4000);
     } catch (err: any) {
-      setSaveStatus(`❌ ${err.message || "সেভ ব্যর্থ হয়েছে"}`);
+      setSaveStatus(`âŒ ${err.message || "à¦¸à§‡à¦­ à¦¬à§à¦¯à¦°à§à¦¥ à¦¹à¦¯à¦¼à§‡à¦›à§‡"}`);
     }
   };
 
@@ -646,9 +676,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (/[0-9]/.test(pass)) score += 1;
     if (/[^A-Za-z0-9]/.test(pass)) score += 1;
 
-    if (score <= 2) return { score: 1, label: "দুর্বল (Weak)", color: "text-red-400 bg-red-500" };
-    if (score <= 4) return { score: 2, label: "মাঝারি (Medium)", color: "text-amber-400 bg-amber-500" };
-    return { score: 3, label: "শক্তিশালী (Strong)", color: "text-green-400 bg-green-500" };
+    if (score <= 2) return { score: 1, label: "à¦¦à§à¦°à§à¦¬à¦² (Weak)", color: "text-red-400 bg-red-500" };
+    if (score <= 4) return { score: 2, label: "à¦®à¦¾à¦à¦¾à¦°à¦¿ (Medium)", color: "text-amber-400 bg-amber-500" };
+    return { score: 3, label: "à¦¶à¦•à§à¦¤à¦¿à¦¶à¦¾à¦²à§€ (Strong)", color: "text-green-400 bg-green-500" };
   };
 
   const pwStrength = getPasswordStrength(newPw);
@@ -662,23 +692,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <button
               onClick={handleExitToApp}
               className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="বন্ধ করুন"
+              title="à¦¬à¦¨à§à¦§ à¦•à¦°à§à¦¨"
             >
               <X className="w-4 h-4" />
             </button>
           )}
 
           <div className="w-14 h-14 mx-auto mb-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-2xl shadow-inner">
-            🛡️
+            ðŸ›¡ï¸
           </div>
-          <h3 className="text-sm font-bold text-red-400 mb-1">টেলিগ্রাম সুরক্ষা লক সক্রিয়</h3>
+          <h3 className="text-sm font-bold text-red-400 mb-1">à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦¸à§à¦°à¦•à§à¦·à¦¾ à¦²à¦• à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼</h3>
           <p className="text-xs text-[#a58bb8] mb-3 leading-relaxed">
-            আপনার বর্তমান টেলিগ্রাম আইডিটি এখনো অ্যাডমিন হিসেবে অনুমোদিত তালিকায় নেই।
+            à¦†à¦ªà¦¨à¦¾à¦° à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿à¦Ÿà¦¿ à¦à¦–à¦¨à§‹ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦¹à¦¿à¦¸à§‡à¦¬à§‡ à¦…à¦¨à§à¦®à§‹à¦¦à¦¿à¦¤ à¦¤à¦¾à¦²à¦¿à¦•à¦¾à¦¯à¦¼ à¦¨à§‡à¦‡à¥¤
           </p>
 
           {currentTgUser?.id && (
             <div className="mb-4 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-200 font-mono">
-              আপনার টেলিগ্রাম আইডি: <span className="font-bold text-pink-400">{currentTgUser.id}</span>
+              à¦†à¦ªà¦¨à¦¾à¦° à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿: <span className="font-bold text-pink-400">{currentTgUser.id}</span>
             </div>
           )}
 
@@ -690,7 +720,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="w-full py-3 rounded-2xl bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-95 text-white text-xs font-bold transition-all shadow cursor-pointer flex items-center justify-center gap-2"
               >
                 <KeyRound className="w-4 h-4" />
-                <span>🔑 মাস্টার পাসওয়ার্ড দিয়ে আনলক করুন</span>
+                <span>ðŸ”‘ à¦®à¦¾à¦¸à§à¦Ÿà¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¯à¦¼à§‡ à¦†à¦¨à¦²à¦• à¦•à¦°à§à¦¨</span>
               </button>
               {onBackToApp && (
                 <button
@@ -698,18 +728,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={handleExitToApp}
                   className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  অ্যাপে ফিরে যান
+                  à¦…à§à¦¯à¦¾à¦ªà§‡ à¦«à¦¿à¦°à§‡ à¦¯à¦¾à¦¨
                 </button>
               )}
             </div>
           ) : (
             <form onSubmit={handleEmergencyUnlock} className="space-y-3 text-left">
               <label className="text-[11px] text-[#8f93ad] block">
-                এডমিন মাস্টার পাসওয়ার্ড প্রবেশ করান:
+                à¦à¦¡à¦®à¦¿à¦¨ à¦®à¦¾à¦¸à§à¦Ÿà¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦•à¦°à¦¾à¦¨:
               </label>
               <input
                 type="password"
-                placeholder="মাস্টার পাসওয়ার্ড"
+                placeholder="à¦®à¦¾à¦¸à§à¦Ÿà¦¾à¦° à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡"
                 value={emergencyPw}
                 onChange={(e) => setEmergencyPw(e.target.value)}
                 autoFocus
@@ -727,14 +757,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => setShowEmergencyUnlock(false)}
                   className="flex-1 py-2 rounded-xl bg-white/5 text-xs text-white/70 hover:bg-white/10"
                 >
-                  বাতিল
+                  à¦¬à¦¾à¦¤à¦¿à¦²
                 </button>
                 <button
                   type="submit"
                   disabled={emergencyLoading || !emergencyPw}
                   className="flex-1 py-2 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white font-bold text-xs shadow flex items-center justify-center gap-1.5 disabled:opacity-50"
                 >
-                  {emergencyLoading ? "আনলক হচ্ছে..." : "✅ অনুমোদন ও লগইন"}
+                  {emergencyLoading ? "à¦†à¦¨à¦²à¦• à¦¹à¦šà§à¦›à§‡..." : "âœ… à¦…à¦¨à§à¦®à§‹à¦¦à¦¨ à¦“ à¦²à¦—à¦‡à¦¨"}
                 </button>
               </div>
             </form>
@@ -753,21 +783,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <button
               onClick={handleExitToApp}
               className="absolute top-3.5 right-3.5 p-1.5 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-              title="বন্ধ করুন"
+              title="à¦¬à¦¨à§à¦§ à¦•à¦°à§à¦¨"
             >
               <X className="w-4 h-4" />
             </button>
           )}
 
           <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-purple-600/20 border border-pink-500/30 flex items-center justify-center text-3xl shadow-inner">
-            🔐
+            ðŸ”
           </div>
 
           <form onSubmit={(e) => handleLogin(e, false)} className="space-y-3">
             <div className="relative flex items-center">
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                 value={password}
                 disabled={retryAfterSeconds > 0}
                 onChange={(e) => {
@@ -781,7 +811,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 type="submit"
                 disabled={isLoggingIn || retryAfterSeconds > 0 || !password}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white flex items-center justify-center shadow hover:opacity-90 disabled:opacity-30 disabled:pointer-events-none transition-all cursor-pointer"
-                title="প্রবেশ"
+                title="à¦ªà§à¦°à¦¬à§‡à¦¶"
               >
                 {isLoggingIn ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -811,7 +841,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={() => handleLogin(undefined, true)}
                 className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-95 text-white text-xs font-bold transition-all shadow cursor-pointer mt-2"
               >
-                ✅ এই আইডি অ্যাডমিন তালিকায় যুক্ত করুন ও প্রবেশ করুন
+                âœ… à¦à¦‡ à¦†à¦‡à¦¡à¦¿ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦¤à¦¾à¦²à¦¿à¦•à¦¾à¦¯à¦¼ à¦¯à§à¦•à§à¦¤ à¦•à¦°à§à¦¨ à¦“ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦•à¦°à§à¦¨
               </button>
             )}
           </form>
@@ -821,12 +851,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   }
 
   const sections: { id: AdminSection; label: string; icon: any }[] = [
-    { id: "general", label: "🎨 সাধারণ ও রঙ", icon: Palette },
-    { id: "menu", label: "📑 মেনু", icon: Menu },
-    { id: "cats", label: "🏷 ক্যাটাগরি", icon: Tags },
-    { id: "videos", label: "🎬 ভিডিও", icon: Video },
-    { id: "ads", label: "💰 বিজ্ঞাপন", icon: DollarSign },
-    { id: "security", label: "🔐 সিকিউরিটি", icon: ShieldCheck },
+    { id: "general", label: "ðŸŽ¨ à¦¸à¦¾à¦§à¦¾à¦°à¦£ à¦“ à¦°à¦™", icon: Palette },
+    { id: "menu", label: "ðŸ“‘ à¦®à§‡à¦¨à§", icon: Menu },
+    { id: "cats", label: "ðŸ· à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿", icon: Tags },
+    { id: "videos", label: "ðŸŽ¬ à¦­à¦¿à¦¡à¦¿à¦“", icon: Video },
+    { id: "ads", label: "ðŸ’° à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨", icon: DollarSign },
+    { id: "security", label: "ðŸ” à¦¸à¦¿à¦•à¦¿à¦‰à¦°à¦¿à¦Ÿà¦¿", icon: ShieldCheck },
   ];
 
   return (
@@ -840,10 +870,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
             <div>
               <h4 className="text-sm font-bold text-white">
-                ⚠️ জরুরি সিকিউরিটি সতর্কবার্তা: ডিফল্ট পাসওয়ার্ড সক্রিয়!
+                âš ï¸ à¦œà¦°à§à¦°à¦¿ à¦¸à¦¿à¦•à¦¿à¦‰à¦°à¦¿à¦Ÿà¦¿ à¦¸à¦¤à¦°à§à¦•à¦¬à¦¾à¦°à§à¦¤à¦¾: à¦¡à¦¿à¦«à¦²à§à¦Ÿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼!
               </h4>
               <p className="text-xs text-amber-200/80 mt-0.5">
-                আপনার সিস্টেমে এখনো ডিফল্ট পাসওয়ার্ড (<span className="font-mono font-bold text-white">admin123</span>) রয়েছে। যে কেউ এটি অনুমান করতে পারে।
+                à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦¿à¦¸à§à¦Ÿà§‡à¦®à§‡ à¦à¦–à¦¨à§‹ à¦¡à¦¿à¦«à¦²à§à¦Ÿ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ (<span className="font-mono font-bold text-white">admin123</span>) à¦°à¦¯à¦¼à§‡à¦›à§‡à¥¤ à¦¯à§‡ à¦•à§‡à¦‰ à¦à¦Ÿà¦¿ à¦…à¦¨à§à¦®à¦¾à¦¨ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¥¤
               </p>
             </div>
           </div>
@@ -851,7 +881,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             onClick={() => setActiveSection("security")}
             className="px-4 py-2 rounded-xl bg-amber-500 text-black font-bold text-xs hover:bg-amber-400 transition-colors shrink-0 cursor-pointer shadow"
           >
-            এখনই পাসওয়ার্ড বদলান →
+            à¦à¦–à¦¨à¦‡ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¬à¦¦à¦²à¦¾à¦¨ â†’
           </button>
         </div>
       )}
@@ -860,19 +890,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-2xl bg-[#1a1b26] border border-[#33354a] mb-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400 font-bold">
-            ⚙
+            âš™
           </div>
           <div>
             <h2 className="text-base font-bold text-white leading-tight">
-              {cfg.appName || "ফান হাব"} অ্যাডমিন কন্ট্রোল
+              {cfg.appName || "à¦«à¦¾à¦¨ à¦¹à¦¾à¦¬"} à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦•à¦¨à§à¦Ÿà§à¦°à§‹à¦²
             </h2>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs text-[#8f93ad]">
-                ভিডিও, মেনু, বিজ্ঞাপন ও থিম ম্যানেজমেন্ট
+                à¦­à¦¿à¦¡à¦¿à¦“, à¦®à§‡à¦¨à§, à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦“ à¦¥à¦¿à¦® à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦®à§‡à¦¨à§à¦Ÿ
               </span>
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
                 <ShieldCheck className="w-3 h-3" />
-                <span>সিকিউরড</span>
+                <span>à¦¸à¦¿à¦•à¦¿à¦‰à¦°à¦¡</span>
               </span>
             </div>
           </div>
@@ -885,24 +915,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="px-3 py-1.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-xs font-bold text-pink-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>📱 অ্যাপে ফিরুন</span>
+              <span>ðŸ“± à¦…à§à¦¯à¦¾à¦ªà§‡ à¦«à¦¿à¦°à§à¦¨</span>
             </button>
           )}
           <a
             href="/api/download-project"
             download="fun-hub-full-source.zip"
             className="flex px-3 py-1.5 rounded-lg bg-pink-500/15 hover:bg-pink-500/25 border border-pink-500/30 text-xs font-semibold text-pink-300 items-center gap-1.5 transition-colors cursor-pointer"
-            title="সম্পূর্ণ প্রোজেক্ট কোড ডাউনলোড করুন"
+            title="à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦ªà§à¦°à§‹à¦œà§‡à¦•à§à¦Ÿ à¦•à§‹à¦¡ à¦¡à¦¾à¦‰à¦¨à¦²à§‹à¦¡ à¦•à¦°à§à¦¨"
           >
             <Download className="w-3.5 h-3.5" />
-            <span>ডাউনলোড ZIP</span>
+            <span>à¦¡à¦¾à¦‰à¦¨à¦²à§‹à¦¡ ZIP</span>
           </a>
           <button
             onClick={handleLogout}
             className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-medium text-red-400 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>লগআউট</span>
+            <span>à¦²à¦—à¦†à¦‰à¦Ÿ</span>
           </button>
         </div>
       </div>
@@ -942,24 +972,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="flex items-center gap-2 border-b border-[#33354a] pb-3">
                 <KeyRound className="w-5 h-5 text-pink-400" />
                 <h3 className="text-sm font-bold text-white">
-                  অ্যাডমিন পাসওয়ার্ড পরিবর্তন করুন
+                  à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à§à¦¨
                 </h3>
               </div>
               <p className="text-xs text-[#8f93ad]">
-                পাসওয়ার্ড পরিবর্তন করার সাথে সাথে অন্য সকল ডিভাইসে চালু থাকা সেশনগুলো স্বয়ংক্রিয়ভাবে বাতিল হয়ে যাবে।
+                à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦•à¦°à¦¾à¦° à¦¸à¦¾à¦¥à§‡ à¦¸à¦¾à¦¥à§‡ à¦…à¦¨à§à¦¯ à¦¸à¦•à¦² à¦¡à¦¿à¦­à¦¾à¦‡à¦¸à§‡ à¦šà¦¾à¦²à§ à¦¥à¦¾à¦•à¦¾ à¦¸à§‡à¦¶à¦¨à¦—à§à¦²à§‹ à¦¸à§à¦¬à¦¯à¦¼à¦‚à¦•à§à¦°à¦¿à¦¯à¦¼à¦­à¦¾à¦¬à§‡ à¦¬à¦¾à¦¤à¦¿à¦² à¦¹à¦¯à¦¼à§‡ à¦¯à¦¾à¦¬à§‡à¥¤
               </p>
 
               <form onSubmit={handleChangePassword} className="space-y-3.5 max-w-lg">
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    বর্তমান পাসওয়ার্ড
+                    à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡
                   </label>
                   <div className="relative">
                     <input
                       type={showPw ? "text" : "password"}
                       value={currentPw}
                       onChange={(e) => setCurrentPw(e.target.value)}
-                      placeholder="বর্তমান পাসওয়ার্ড লিখুন..."
+                      placeholder="à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦²à¦¿à¦–à§à¦¨..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white focus:border-pink-500 outline-none pr-10"
                     />
                     <button
@@ -974,13 +1004,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    নতুন শক্তিশালী পাসওয়ার্ড (কমপক্ষে ৮ অক্ষর)
+                    à¦¨à¦¤à§à¦¨ à¦¶à¦•à§à¦¤à¦¿à¦¶à¦¾à¦²à§€ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ (à¦•à¦®à¦ªà¦•à§à¦·à§‡ à§® à¦…à¦•à§à¦·à¦°)
                   </label>
                   <input
                     type={showPw ? "text" : "password"}
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    placeholder="নতুন পাসওয়ার্ড দিন..."
+                    placeholder="à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à¦¨..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white focus:border-pink-500 outline-none"
                   />
 
@@ -988,7 +1018,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {newPw && (
                     <div className="mt-2 space-y-1">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="text-[#8f93ad]">পাসওয়ার্ড শক্তি:</span>
+                        <span className="text-[#8f93ad]">à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¶à¦•à§à¦¤à¦¿:</span>
                         <span className={pwStrength.color.split(" ")[0]}>
                           {pwStrength.label}
                         </span>
@@ -1016,13 +1046,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    নতুন পাসওয়ার্ড নিশ্চিতকরণ
+                    à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤à¦•à¦°à¦£
                   </label>
                   <input
                     type={showPw ? "text" : "password"}
                     value={confirmPw}
                     onChange={(e) => setConfirmPw(e.target.value)}
-                    placeholder="নতুন পাসওয়ার্ডটি আবার লিখুন..."
+                    placeholder="à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡à¦Ÿà¦¿ à¦†à¦¬à¦¾à¦° à¦²à¦¿à¦–à§à¦¨..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white focus:border-pink-500 outline-none"
                   />
                 </div>
@@ -1049,7 +1079,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   disabled={isChangingPw}
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-sm shadow hover:opacity-95 transition-opacity cursor-pointer disabled:opacity-50"
                 >
-                  {isChangingPw ? "সংরক্ষণ হচ্ছে..." : "🔒 নতুন পাসওয়ার্ড সংরক্ষণ করুন"}
+                  {isChangingPw ? "à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦¹à¦šà§à¦›à§‡..." : "ðŸ”’ à¦¨à¦¤à§à¦¨ à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à§à¦¨"}
                 </button>
               </form>
             </div>
@@ -1060,24 +1090,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-pink-400" />
                   <h3 className="text-sm font-bold text-white">
-                    টেলিগ্রাম আইডি সুরক্ষা (Telegram ID Lock)
+                    à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿ à¦¸à§à¦°à¦•à§à¦·à¦¾ (Telegram ID Lock)
                   </h3>
                 </div>
                 {authStatus?.adminTelegramId ? (
                   <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-green-500/15 text-green-400 border border-green-500/30 flex items-center gap-1">
                     <Check className="w-3 h-3" />
-                    <span>লক সক্রিয়</span>
+                    <span>à¦²à¦• à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼</span>
                   </span>
                 ) : (
                   <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                    লক নিষ্ক্রিয় (পাসওয়ার্ড দিয়ে যে কেউ)
+                    à¦²à¦• à¦¨à¦¿à¦·à§à¦•à§à¦°à¦¿à¦¯à¦¼ (à¦ªà¦¾à¦¸à¦“à¦¯à¦¼à¦¾à¦°à§à¦¡ à¦¦à¦¿à§Ÿà§‡ à¦¯à§‡ à¦•à§‡à¦‰)
                   </span>
                 )}
               </div>
 
               <p className="text-xs text-[#8f93ad] leading-relaxed">
-                আপনার ব্যক্তিগত টেলিগ্রাম ইউজার আইডি দিয়ে অ্যাডমিন লক করে দিলে, অন্য কেউ পাসওয়ার্ড জানলেও 
-                লগইন করতে পারবে না। শুধুমাত্র আপনার নির্দিষ্ট টেলিগ্রাম অ্যাকাউন্ট দিয়েই এই অ্যাডমিন প্যানেলে প্রবেশ সম্ভব।
+                à¦†à¦ªà¦¨à¦¾à¦° à¦¬à§à¦¯à¦•à§à¦¤à¦¿à¦—à¦¤ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦‡à¦‰à¦œà¦¾à¦° à¦†à¦‡à¦¡à¦¿ à¦¦à¦¿à§Ÿà§‡ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦²à¦• à¦•à¦°à§‡ à¦¦à¦¿à¦²à§‡, à¦…à¦¨à§à¦¯ à¦•à§‡à¦‰ à¦ªà¦¾à¦¸à¦“à§Ÿà¦¾à¦°à§à¦¡ à¦œà¦¾à¦¨à¦²à§‡à¦“ 
+                à¦²à¦—à¦‡à¦¨ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡ à¦¨à¦¾à¥¤ à¦¶à§à¦§à§à¦®à¦¾à¦¤à§à¦° à¦†à¦ªà¦¨à¦¾à¦° à¦¨à¦¿à¦°à§à¦¦à¦¿à¦·à§à¦Ÿ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦¦à¦¿à§Ÿà§‡à¦‡ à¦à¦‡ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦ªà§à¦¯à¦¾à¦¨à§‡à¦²à§‡ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦¸à¦®à§à¦­à¦¬à¥¤
               </p>
 
               {/* Detected Telegram user */}
@@ -1085,7 +1115,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <span className="text-xs text-purple-300 font-semibold block">
-                      শনাক্তকৃত বর্তমান টেলিগ্রাম অ্যাকাউন্ট:
+                      à¦¶à¦¨à¦¾à¦•à§à¦¤à¦•à§ƒà¦¤ à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ:
                     </span>
                     <span className="text-sm font-bold text-white">
                       {currentTgUser.first_name} {currentTgUser.last_name || ""}{" "}
@@ -1103,11 +1133,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 hover:opacity-95 text-white font-bold text-xs shrink-0 cursor-pointer shadow disabled:opacity-50 flex items-center gap-1.5"
                     >
                       <Lock className="w-3.5 h-3.5" />
-                      <span>🔒 এই আইডিতে লক করুন</span>
+                      <span>ðŸ”’ à¦à¦‡ à¦†à¦‡à¦¡à¦¿à¦¤à§‡ à¦²à¦• à¦•à¦°à§à¦¨</span>
                     </button>
                   ) : (
                     <span className="px-3 py-1.5 rounded-lg bg-green-500/20 text-green-300 text-xs font-bold border border-green-500/40">
-                      ✅ আপনার আইডি বর্তমানে লক করা আছে
+                      âœ… à¦†à¦ªà¦¨à¦¾à¦° à¦†à¦‡à¦¡à¦¿ à¦¬à¦°à§à¦¤à¦®à¦¾à¦¨à§‡ à¦²à¦• à¦•à¦°à¦¾ à¦†à¦›à§‡
                     </span>
                   )}
                 </div>
@@ -1116,7 +1146,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {/* Manual Input and Configured ID Display */}
               <div className="space-y-2 max-w-lg">
                 <label className="text-xs text-[#8f93ad] block">
-                  নির্ধারিত অ্যাডমিন টেলিগ্রাম আইডি (White-listed Telegram ID):
+                  à¦¨à¦¿à¦°à§à¦§à¦¾à¦°à¦¿à¦¤ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦‡à¦¡à¦¿ (White-listed Telegram ID):
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1126,7 +1156,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     placeholder={
                       authStatus?.adminTelegramId
                         ? String(authStatus.adminTelegramId)
-                        : "যেমন: 123456789"
+                        : "à¦¯à§‡à¦®à¦¨: 123456789"
                     }
                     className="flex-1 px-3.5 py-2.5 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white focus:border-pink-500 outline-none font-mono"
                   />
@@ -1136,7 +1166,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onClick={() => handleSetTelegramId(telegramIdInput)}
                     className="px-4 py-2.5 rounded-xl bg-[#2b2d42] hover:bg-[#383a54] border border-[#44476a] text-xs font-bold text-white transition-colors cursor-pointer shrink-0 disabled:opacity-50"
                   >
-                    {isSavingTelegramId ? "..." : "সেভ"}
+                    {isSavingTelegramId ? "..." : "à¦¸à§‡à¦­"}
                   </button>
                   {authStatus?.adminTelegramId && (
                     <button
@@ -1147,9 +1177,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         handleSetTelegramId("");
                       }}
                       className="px-3 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400 transition-colors cursor-pointer shrink-0"
-                      title="লক রিমুভ করুন"
+                      title="à¦²à¦• à¦°à¦¿à¦®à§à¦­ à¦•à¦°à§à¦¨"
                     >
-                      লক তুলুন
+                      à¦²à¦• à¦¤à§à¦²à§à¦¨
                     </button>
                   )}
                 </div>
@@ -1176,17 +1206,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {/* Session Management */}
             <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-3">
               <h3 className="text-sm font-bold text-white border-b border-[#33354a] pb-2">
-                সেশন ও ডিভাইস কন্ট্রোল
+                à¦¸à§‡à¦¶à¦¨ à¦“ à¦¡à¦¿à¦­à¦¾à¦‡à¦¸ à¦•à¦¨à§à¦Ÿà§à¦°à§‹à¦²
               </h3>
               <p className="text-xs text-[#8f93ad] leading-relaxed">
-                যদি আপনার মনে হয় অন্য কোনো ব্রাউজার বা ডিভাইসে অ্যাডমিন অ্যাকাউন্ট ওপেন রাখা আছে, তবে নিচের বাটন চেপে এক ক্লিকে অন্য সব সেশন বাতিল করতে পারবেন।
+                à¦¯à¦¦à¦¿ à¦†à¦ªà¦¨à¦¾à¦° à¦®à¦¨à§‡ à¦¹à¦¯à¦¼ à¦…à¦¨à§à¦¯ à¦•à§‹à¦¨à§‹ à¦¬à§à¦°à¦¾à¦‰à¦œà¦¾à¦° à¦¬à¦¾ à¦¡à¦¿à¦­à¦¾à¦‡à¦¸à§‡ à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦…à§à¦¯à¦¾à¦•à¦¾à¦‰à¦¨à§à¦Ÿ à¦“à¦ªà§‡à¦¨ à¦°à¦¾à¦–à¦¾ à¦†à¦›à§‡, à¦¤à¦¬à§‡ à¦¨à¦¿à¦šà§‡à¦° à¦¬à¦¾à¦Ÿà¦¨ à¦šà§‡à¦ªà§‡ à¦à¦• à¦•à§à¦²à¦¿à¦•à§‡ à¦…à¦¨à§à¦¯ à¦¸à¦¬ à¦¸à§‡à¦¶à¦¨ à¦¬à¦¾à¦¤à¦¿à¦² à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡à¦¨à¥¤
               </p>
 
               <button
                 onClick={handleRevokeAllSessions}
                 className="px-4 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 hover:bg-red-500/25 text-xs font-bold transition-colors cursor-pointer"
               >
-                🚪 অন্য সকল ডিভাইস থেকে লগআউট করুন (Revoke All Sessions)
+                ðŸšª à¦…à¦¨à§à¦¯ à¦¸à¦•à¦² à¦¡à¦¿à¦­à¦¾à¦‡à¦¸ à¦¥à§‡à¦•à§‡ à¦²à¦—à¦†à¦‰à¦Ÿ à¦•à¦°à§à¦¨ (Revoke All Sessions)
               </button>
             </div>
 
@@ -1196,10 +1226,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <Download className="w-5 h-5 text-pink-400" />
                 <div>
                   <h3 className="text-sm font-bold text-white">
-                    📦 সম্পূর্ণ প্রোজেক্ট ডাউনলোড ও ব্যাকআপ (Backup & Source Code)
+                    ðŸ“¦ à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦ªà§à¦°à§‹à¦œà§‡à¦•à§à¦Ÿ à¦¡à¦¾à¦‰à¦¨à¦²à§‹à¦¡ à¦“ à¦¬à§à¦¯à¦¾à¦•à¦†à¦ª (Backup & Source Code)
                   </h3>
                   <p className="text-xs text-[#8f93ad]">
-                    আপনার অ্যাপের সম্পূর্ণ কোডবেস এবং কনফিগারেশন কম্পিউটারে সংরক্ষণ করুন
+                    à¦†à¦ªà¦¨à¦¾à¦° à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦•à§‹à¦¡à¦¬à§‡à¦¸ à¦à¦¬à¦‚ à¦•à¦¨à¦«à¦¿à¦—à¦¾à¦°à§‡à¦¶à¦¨ à¦•à¦®à§à¦ªà¦¿à¦‰à¦Ÿà¦¾à¦°à§‡ à¦¸à¦‚à¦°à¦•à§à¦·à¦£ à¦•à¦°à§à¦¨
                   </p>
                 </div>
               </div>
@@ -1213,14 +1243,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm flex items-center gap-2">
                       <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                      সম্পূর্ণ সোর্স কোড (ZIP)
+                      à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¸à§‹à¦°à§à¦¸ à¦•à§‹à¦¡ (ZIP)
                     </span>
                     <span className="text-[10px] bg-black/30 px-2 py-0.5 rounded-full font-mono">
                       ~1 MB
                     </span>
                   </div>
                   <span className="text-xs text-pink-100/80 leading-snug">
-                    React + Vite + Express + Tailwind + সম্পূর্ণ টাইপস্ক্রিপ্ট সোর্স কোড
+                    React + Vite + Express + Tailwind + à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦Ÿà¦¾à¦‡à¦ªà¦¸à§à¦•à§à¦°à¦¿à¦ªà§à¦Ÿ à¦¸à§‹à¦°à§à¦¸ à¦•à§‹à¦¡
                   </span>
                 </a>
 
@@ -1232,39 +1262,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-sm flex items-center gap-2">
                       <Download className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
-                      স্ট্যান্ডঅ্যালন সার্ভার (ZIP)
+                      à¦¸à§à¦Ÿà§à¦¯à¦¾à¦¨à§à¦¡à¦…à§à¦¯à¦¾à¦²à¦¨ à¦¸à¦¾à¦°à§à¦­à¦¾à¦° (ZIP)
                     </span>
                     <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full font-mono">
                       Zero-dep
                     </span>
                   </div>
                   <span className="text-xs text-[#a5a9c5] leading-snug">
-                    কোনো এক্সটার্নাল প্যাকেজ ছাড়াই যেকোনো সার্ভারে শুধু node server.js দিয়ে চলবে
+                    à¦•à§‹à¦¨à§‹ à¦à¦•à§à¦¸à¦Ÿà¦¾à¦°à§à¦¨à¦¾à¦² à¦ªà§à¦¯à¦¾à¦•à§‡à¦œ à¦›à¦¾à§œà¦¾à¦‡ à¦¯à§‡à¦•à§‹à¦¨à§‹ à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡ à¦¶à§à¦§à§ node server.js à¦¦à¦¿à§Ÿà§‡ à¦šà¦²à¦¬à§‡
                   </span>
                 </a>
               </div>
 
               <div className="p-3 rounded-xl bg-black/30 border border-white/5 text-[11px] text-[#8f93ad] space-y-1">
-                <strong className="text-white block font-semibold">💡 কম্পিউটারে রান করার নিয়ম:</strong>
-                <div>১. জিপ ফাইলটি আনজিপ করুন</div>
-                <div>২. টার্মিনালে <code className="text-pink-400 bg-pink-500/10 px-1 rounded">npm install</code> রান করুন</div>
-                <div>৩. এরপর <code className="text-pink-400 bg-pink-500/10 px-1 rounded">npm run dev</code> রান করলেই লোকালহোস্টে চালু হবে!</div>
+                <strong className="text-white block font-semibold">ðŸ’¡ à¦•à¦®à§à¦ªà¦¿à¦‰à¦Ÿà¦¾à¦°à§‡ à¦°à¦¾à¦¨ à¦•à¦°à¦¾à¦° à¦¨à¦¿à§Ÿà¦®:</strong>
+                <div>à§§. à¦œà¦¿à¦ª à¦«à¦¾à¦‡à¦²à¦Ÿà¦¿ à¦†à¦¨à¦œà¦¿à¦ª à¦•à¦°à§à¦¨</div>
+                <div>à§¨. à¦Ÿà¦¾à¦°à§à¦®à¦¿à¦¨à¦¾à¦²à§‡ <code className="text-pink-400 bg-pink-500/10 px-1 rounded">npm install</code> à¦°à¦¾à¦¨ à¦•à¦°à§à¦¨</div>
+                <div>à§©. à¦à¦°à¦ªà¦° <code className="text-pink-400 bg-pink-500/10 px-1 rounded">npm run dev</code> à¦°à¦¾à¦¨ à¦•à¦°à¦²à§‡à¦‡ à¦²à§‹à¦•à¦¾à¦²à¦¹à§‹à¦¸à§à¦Ÿà§‡ à¦šà¦¾à¦²à§ à¦¹à¦¬à§‡!</div>
               </div>
             </div>
 
             {/* Security Audit Checklist */}
             <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-3">
               <h3 className="text-sm font-bold text-white border-b border-[#33354a] pb-2">
-                🛡️ সক্রিয় নিরাপত্তা সুরক্ষা ব্যবস্থা
+                ðŸ›¡ï¸ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼ à¦¨à¦¿à¦°à¦¾à¦ªà¦¤à§à¦¤à¦¾ à¦¸à§à¦°à¦•à§à¦·à¦¾ à¦¬à§à¦¯à¦¬à¦¸à§à¦¥à¦¾
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block">PBKDF2 ক্রিপ্টোগ্রাফিক হ্যাশিং</strong>
+                    <strong className="text-white block">PBKDF2 à¦•à§à¦°à¦¿à¦ªà§à¦Ÿà§‹à¦—à§à¦°à¦¾à¦«à¦¿à¦• à¦¹à§à¦¯à¦¾à¦¶à¦¿à¦‚</strong>
                     <span className="text-[#8f93ad]">
-                      ১,০০,০০০ রাউন্ড সহ র্যান্ডম ৩২-বাইট সল্ট (SHA-512)
+                      à§§,à§¦à§¦,à§¦à§¦à§¦ à¦°à¦¾à¦‰à¦¨à§à¦¡ à¦¸à¦¹ à¦°à§à¦¯à¦¾à¦¨à§à¦¡à¦® à§©à§¨-à¦¬à¦¾à¦‡à¦Ÿ à¦¸à¦²à§à¦Ÿ (SHA-512)
                     </span>
                   </div>
                 </div>
@@ -1272,9 +1302,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block">ব্রুট-ফোর্স অ্যান্টি-হ্যাক লকআউট</strong>
+                    <strong className="text-white block">à¦¬à§à¦°à§à¦Ÿ-à¦«à§‹à¦°à§à¦¸ à¦…à§à¦¯à¦¾à¦¨à§à¦Ÿà¦¿-à¦¹à§à¦¯à¦¾à¦• à¦²à¦•à¦†à¦‰à¦Ÿ</strong>
                     <span className="text-[#8f93ad]">
-                      ৫ বার ভুল হলে ৩ মিনিট এবং ১০ বারে ১ ঘণ্টা আইপি লক
+                      à§« à¦¬à¦¾à¦° à¦­à§à¦² à¦¹à¦²à§‡ à§© à¦®à¦¿à¦¨à¦¿à¦Ÿ à¦à¦¬à¦‚ à§§à§¦ à¦¬à¦¾à¦°à§‡ à§§ à¦˜à¦£à§à¦Ÿà¦¾ à¦†à¦‡à¦ªà¦¿ à¦²à¦•
                     </span>
                   </div>
                 </div>
@@ -1282,9 +1312,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block">ম্যাজিক বাইট সিগনেচার যাচাই</strong>
+                    <strong className="text-white block">à¦®à§à¦¯à¦¾à¦œà¦¿à¦• à¦¬à¦¾à¦‡à¦Ÿ à¦¸à¦¿à¦—à¦¨à§‡à¦šà¦¾à¦° à¦¯à¦¾à¦šà¦¾à¦‡</strong>
                     <span className="text-[#8f93ad]">
-                      আপলোডকৃত প্রতিটি ফাইলের অভ্যন্তরীণ বাফার সিগনেচার ভ্যালিডেশন
+                      à¦†à¦ªà¦²à§‹à¦¡à¦•à§ƒà¦¤ à¦ªà§à¦°à¦¤à¦¿à¦Ÿà¦¿ à¦«à¦¾à¦‡à¦²à§‡à¦° à¦…à¦­à§à¦¯à¦¨à§à¦¤à¦°à§€à¦£ à¦¬à¦¾à¦«à¦¾à¦° à¦¸à¦¿à¦—à¦¨à§‡à¦šà¦¾à¦° à¦­à§à¦¯à¦¾à¦²à¦¿à¦¡à§‡à¦¶à¦¨
                     </span>
                   </div>
                 </div>
@@ -1292,9 +1322,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block">কনটেন্ট সিকিউরিটি পলিসি (CSP)</strong>
+                    <strong className="text-white block">à¦•à¦¨à¦Ÿà§‡à¦¨à§à¦Ÿ à¦¸à¦¿à¦•à¦¿à¦‰à¦°à¦¿à¦Ÿà¦¿ à¦ªà¦²à¦¿à¦¸à¦¿ (CSP)</strong>
                     <span className="text-[#8f93ad]">
-                      আপলোড ফোল্ডারে স্ক্রিপ্ট এক্সিকিউশন সম্পূর্ণ ব্লক (Sandbox)
+                      à¦†à¦ªà¦²à§‹à¦¡ à¦«à§‹à¦²à§à¦¡à¦¾à¦°à§‡ à¦¸à§à¦•à§à¦°à¦¿à¦ªà§à¦Ÿ à¦à¦•à§à¦¸à¦¿à¦•à¦¿à¦‰à¦¶à¦¨ à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦¬à§à¦²à¦• (Sandbox)
                     </span>
                   </div>
                 </div>
@@ -1308,13 +1338,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-5">
             <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-4">
               <h3 className="text-sm font-bold text-white flex items-center gap-2 border-b border-[#33354a] pb-2">
-                <span>অ্যাপ আইডেন্টিটি</span>
+                <span>à¦…à§à¦¯à¦¾à¦ª à¦†à¦‡à¦¡à§‡à¦¨à§à¦Ÿà¦¿à¦Ÿà¦¿</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    অ্যাপের নাম
+                    à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦¨à¦¾à¦®
                   </label>
                   <input
                     type="text"
@@ -1326,7 +1356,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    লোগো বা ইমোজি
+                    à¦²à§‹à¦—à§‹ à¦¬à¦¾ à¦‡à¦®à§‹à¦œà¦¿
                   </label>
                   <input
                     type="text"
@@ -1338,7 +1368,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    ডানদিকের ব্যাজ লেবেল (খালি রাখলে লুকাবে)
+                    à¦¡à¦¾à¦¨à¦¦à¦¿à¦•à§‡à¦° à¦¬à§à¦¯à¦¾à¦œ à¦²à§‡à¦¬à§‡à¦² (à¦–à¦¾à¦²à¦¿ à¦°à¦¾à¦–à¦²à§‡ à¦²à§à¦•à¦¾à¦¬à§‡)
                   </label>
                   <input
                     type="text"
@@ -1350,7 +1380,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    সার্চ বক্সের প্লেসহোল্ডার
+                    à¦¸à¦¾à¦°à§à¦š à¦¬à¦•à§à¦¸à§‡à¦° à¦ªà§à¦²à§‡à¦¸à¦¹à§‹à¦²à§à¦¡à¦¾à¦°
                   </label>
                   <input
                     type="text"
@@ -1363,7 +1393,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  স্বাগত ব্যানার বার্তা (খালি রাখলে লুকাবে)
+                  à¦¸à§à¦¬à¦¾à¦—à¦¤ à¦¬à§à¦¯à¦¾à¦¨à¦¾à¦° à¦¬à¦¾à¦°à§à¦¤à¦¾ (à¦–à¦¾à¦²à¦¿ à¦°à¦¾à¦–à¦²à§‡ à¦²à§à¦•à¦¾à¦¬à§‡)
                 </label>
                 <input
                   type="text"
@@ -1375,7 +1405,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  ভিডিও না পেলে যে লেখা দেখাবে
+                  à¦­à¦¿à¦¡à¦¿à¦“ à¦¨à¦¾ à¦ªà§‡à¦²à§‡ à¦¯à§‡ à¦²à§‡à¦–à¦¾ à¦¦à§‡à¦–à¦¾à¦¬à§‡
                 </label>
                 <input
                   type="text"
@@ -1389,22 +1419,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {/* Color Palette */}
             <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-4">
               <h3 className="text-sm font-bold text-white flex items-center justify-between border-b border-[#33354a] pb-2">
-                <span>রঙের থিম (Color Palette)</span>
+                <span>à¦°à¦™à§‡à¦° à¦¥à¦¿à¦® (Color Palette)</span>
                 <span className="text-xs text-[#8f93ad] font-normal">
-                  মিনি অ্যাপের সাথে রিয়েল-টাইমে সিঙ্ক হয়
+                  à¦®à¦¿à¦¨à¦¿ à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦¸à¦¾à¦¥à§‡ à¦°à¦¿à¦¯à¦¼à§‡à¦²-à¦Ÿà¦¾à¦‡à¦®à§‡ à¦¸à¦¿à¦™à§à¦• à¦¹à¦¯à¦¼
                 </span>
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
                 {[
-                  { key: "bg", label: "ব্যাকগ্রাউন্ড" },
-                  { key: "card", label: "কার্ড ও হেডার" },
-                  { key: "line", label: "বর্ডার লাইন" },
-                  { key: "text", label: "মূল লেখা" },
-                  { key: "mute", label: "হালকা টেক্সট" },
-                  { key: "accent1", label: "অ্যাকসেন্ট ১ (গোলাপী)" },
-                  { key: "accent2", label: "অ্যাকসেন্ট ২ (বেগুনী)" },
-                  { key: "gold", label: "লক ও গোল্ড" },
+                  { key: "bg", label: "à¦¬à§à¦¯à¦¾à¦•à¦—à§à¦°à¦¾à¦‰à¦¨à§à¦¡" },
+                  { key: "card", label: "à¦•à¦¾à¦°à§à¦¡ à¦“ à¦¹à§‡à¦¡à¦¾à¦°" },
+                  { key: "line", label: "à¦¬à¦°à§à¦¡à¦¾à¦° à¦²à¦¾à¦‡à¦¨" },
+                  { key: "text", label: "à¦®à§‚à¦² à¦²à§‡à¦–à¦¾" },
+                  { key: "mute", label: "à¦¹à¦¾à¦²à¦•à¦¾ à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ" },
+                  { key: "accent1", label: "à¦…à§à¦¯à¦¾à¦•à¦¸à§‡à¦¨à§à¦Ÿ à§§ (à¦—à§‹à¦²à¦¾à¦ªà§€)" },
+                  { key: "accent2", label: "à¦…à§à¦¯à¦¾à¦•à¦¸à§‡à¦¨à§à¦Ÿ à§¨ (à¦¬à§‡à¦—à§à¦¨à§€)" },
+                  { key: "gold", label: "à¦²à¦• à¦“ à¦—à§‹à¦²à§à¦¡" },
                 ].map(({ key, label }) => {
                   const val = (cfg.theme as any)[key] || "#000000";
                   return (
@@ -1441,7 +1471,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeSection === "menu" && (
           <div className="space-y-4">
             <p className="text-xs text-[#8f93ad]">
-              টেলিগ্রাম মিনি অ্যাপের নিচের মেনু বার কাস্টমাইজ করুন। প্রতিটি ট্যাবের আইকন ও কনটেন্ট সাজান।
+              à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦®à¦¿à¦¨à¦¿ à¦…à§à¦¯à¦¾à¦ªà§‡à¦° à¦¨à¦¿à¦šà§‡à¦° à¦®à§‡à¦¨à§ à¦¬à¦¾à¦° à¦•à¦¾à¦¸à§à¦Ÿà¦®à¦¾à¦‡à¦œ à¦•à¦°à§à¦¨à¥¤ à¦ªà§à¦°à¦¤à¦¿à¦Ÿà¦¿ à¦Ÿà§à¦¯à¦¾à¦¬à§‡à¦° à¦†à¦‡à¦•à¦¨ à¦“ à¦•à¦¨à¦Ÿà§‡à¦¨à§à¦Ÿ à¦¸à¦¾à¦œà¦¾à¦¨à¥¤
             </p>
 
             {(cfg.tabs || []).map((tab, idx) => (
@@ -1486,7 +1516,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-xs text-[#8f93ad] block mb-1">
-                      মেনুর নাম
+                      à¦®à§‡à¦¨à§à¦° à¦¨à¦¾à¦®
                     </label>
                     <input
                       type="text"
@@ -1498,7 +1528,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   <div>
                     <label className="text-xs text-[#8f93ad] block mb-1">
-                      আইকন (ইমোজি)
+                      à¦†à¦‡à¦•à¦¨ (à¦‡à¦®à§‹à¦œà¦¿)
                     </label>
                     <input
                       type="text"
@@ -1510,16 +1540,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                   <div>
                     <label className="text-xs text-[#8f93ad] block mb-1">
-                      মেনুর ধরন
+                      à¦®à§‡à¦¨à§à¦° à¦§à¦°à¦¨
                     </label>
                     <select
                       value={tab.type}
                       onChange={(e) => updateConfigValue(`tabs.${idx}.type`, e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none focus:border-pink-500 cursor-pointer"
                     >
-                      <option value="videos">ভিডিও ফিড (Videos)</option>
-                      <option value="links">লিংক তালিকা (Telegram Links)</option>
-                      <option value="page">লেখার পেজ (Rich Text Page)</option>
+                      <option value="videos">à¦­à¦¿à¦¡à¦¿à¦“ à¦«à¦¿à¦¡ (Videos)</option>
+                      <option value="links">à¦²à¦¿à¦‚à¦• à¦¤à¦¾à¦²à¦¿à¦•à¦¾ (Telegram Links)</option>
+                      <option value="page">à¦²à§‡à¦–à¦¾à¦° à¦ªà§‡à¦œ (Rich Text Page)</option>
                     </select>
                   </div>
                 </div>
@@ -1528,20 +1558,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="space-y-3 pt-2">
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        পেজের শিরোনাম
+                        à¦ªà§‡à¦œà§‡à¦° à¦¶à¦¿à¦°à§‹à¦¨à¦¾à¦®
                       </label>
                       <input
                         type="text"
                         value={tab.title || ""}
                         onChange={(e) => updateConfigValue(`tabs.${idx}.title`, e.target.value)}
-                        placeholder="যেমন: টেলিগ্রাম কমিউনিটি সমূহ"
+                        placeholder="à¦¯à§‡à¦®à¦¨: à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦•à¦®à¦¿à¦‰à¦¨à¦¿à¦Ÿà¦¿ à¦¸à¦®à§‚à¦¹"
                         className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none focus:border-pink-500"
                       />
                     </div>
 
                     <div className="space-y-2">
                       <span className="text-xs font-semibold text-[#8f93ad] block">
-                        লিংক আইটেম সমূহ:
+                        à¦²à¦¿à¦‚à¦• à¦†à¦‡à¦Ÿà§‡à¦® à¦¸à¦®à§‚à¦¹:
                       </span>
                       {(tab.items || []).map((it, itemIdx) => (
                         <div
@@ -1550,7 +1580,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-xs text-[#8f93ad]">
-                              লিংক #{itemIdx + 1}
+                              à¦²à¦¿à¦‚à¦• #{itemIdx + 1}
                             </span>
                             <button
                               onClick={() => {
@@ -1563,14 +1593,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                               }}
                               className="text-red-400 text-xs hover:underline cursor-pointer"
                             >
-                              মুছুন
+                              à¦®à§à¦›à§à¦¨
                             </button>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input
                               type="text"
                               value={it.title}
-                              placeholder="শিরোনাম"
+                              placeholder="à¦¶à¦¿à¦°à§‹à¦¨à¦¾à¦®"
                               onChange={(e) =>
                                 updateConfigValue(`tabs.${idx}.items.${itemIdx}.title`, e.target.value)
                               }
@@ -1588,7 +1618,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             <input
                               type="text"
                               value={it.button}
-                              placeholder="বাটন টেক্সট (যেমন: জয়েন)"
+                              placeholder="à¦¬à¦¾à¦Ÿà¦¨ à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ (à¦¯à§‡à¦®à¦¨: à¦œà¦¯à¦¼à§‡à¦¨)"
                               onChange={(e) =>
                                 updateConfigValue(`tabs.${idx}.items.${itemIdx}.button`, e.target.value)
                               }
@@ -1605,9 +1635,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             const copy = JSON.parse(JSON.stringify(c));
                             if (!copy.tabs[idx].items) copy.tabs[idx].items = [];
                             copy.tabs[idx].items.push({
-                              title: "নতুন টেলিগ্রাম গ্রুপ",
+                              title: "à¦¨à¦¤à§à¦¨ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦—à§à¦°à§à¦ª",
                               url: "https://t.me/",
-                              button: "জয়েন",
+                              button: "à¦œà¦¯à¦¼à§‡à¦¨",
                             });
                             return copy;
                           });
@@ -1615,7 +1645,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className="w-full py-2 rounded-xl border border-dashed border-pink-500/50 text-pink-400 text-xs font-medium hover:bg-pink-500/10 cursor-pointer flex items-center justify-center gap-1"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>+ নতুন লিংক যোগ করুন</span>
+                        <span>+ à¦¨à¦¤à§à¦¨ à¦²à¦¿à¦‚à¦• à¦¯à§‹à¦— à¦•à¦°à§à¦¨</span>
                       </button>
                     </div>
                   </div>
@@ -1625,7 +1655,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="space-y-3 pt-2">
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        পেজের শিরোনাম
+                        à¦ªà§‡à¦œà§‡à¦° à¦¶à¦¿à¦°à§‹à¦¨à¦¾à¦®
                       </label>
                       <input
                         type="text"
@@ -1636,7 +1666,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        পেজের বিস্তারিত লেখা
+                        à¦ªà§‡à¦œà§‡à¦° à¦¬à¦¿à¦¸à§à¦¤à¦¾à¦°à¦¿à¦¤ à¦²à§‡à¦–à¦¾
                       </label>
                       <textarea
                         rows={4}
@@ -1656,11 +1686,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 setCfg((c) => {
                   const copy = JSON.parse(JSON.stringify(c));
                   copy.tabs.push({
-                    label: "নতুন মেনু",
-                    icon: "⭐",
+                    label: "à¦¨à¦¤à§à¦¨ à¦®à§‡à¦¨à§",
+                    icon: "â­",
                     type: "page",
-                    title: "নতুন পেজ",
-                    text: "এখানে আপনার বিবরণ লিখুন।",
+                    title: "à¦¨à¦¤à§à¦¨ à¦ªà§‡à¦œ",
+                    text: "à¦à¦–à¦¾à¦¨à§‡ à¦†à¦ªà¦¨à¦¾à¦° à¦¬à¦¿à¦¬à¦°à¦£ à¦²à¦¿à¦–à§à¦¨à¥¤",
                   });
                   return copy;
                 });
@@ -1668,7 +1698,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full py-3 rounded-2xl border border-dashed border-pink-500 text-pink-400 text-sm font-semibold hover:bg-pink-500/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>+ নতুন মেনু ট্যাব তৈরি করুন</span>
+              <span>+ à¦¨à¦¤à§à¦¨ à¦®à§‡à¦¨à§ à¦Ÿà§à¦¯à¦¾à¦¬ à¦¤à§ˆà¦°à¦¿ à¦•à¦°à§à¦¨</span>
             </button>
           </div>
         )}
@@ -1677,10 +1707,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeSection === "cats" && (
           <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-4">
             <h3 className="text-sm font-bold text-white border-b border-[#33354a] pb-2">
-              ক্যাটাগরি ম্যানেজমেন্ট
+              à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿ à¦®à§à¦¯à¦¾à¦¨à§‡à¦œà¦®à§‡à¦¨à§à¦Ÿ
             </h3>
             <p className="text-xs text-[#8f93ad]">
-              প্রথম ক্যাটাগরিটি সব সময় "সবগুলো" (Default All)। কোনো ক্যাটাগরি রিনেম করলে বিদ্যমান সব ভিডিও স্বয়ংক্রিয়ভাবে আপডেট হবে।
+              à¦ªà§à¦°à¦¥à¦® à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿à¦Ÿà¦¿ à¦¸à¦¬ à¦¸à¦®à¦¯à¦¼ "à¦¸à¦¬à¦—à§à¦²à§‹" (Default All)à¥¤ à¦•à§‹à¦¨à§‹ à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿ à¦°à¦¿à¦¨à§‡à¦® à¦•à¦°à¦²à§‡ à¦¬à¦¿à¦¦à§à¦¯à¦®à¦¾à¦¨ à¦¸à¦¬ à¦­à¦¿à¦¡à¦¿à¦“ à¦¸à§à¦¬à¦¯à¦¼à¦‚à¦•à§à¦°à¦¿à¦¯à¦¼à¦­à¦¾à¦¬à§‡ à¦†à¦ªà¦¡à§‡à¦Ÿ à¦¹à¦¬à§‡à¥¤
             </p>
 
             <div className="space-y-2.5">
@@ -1690,7 +1720,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="flex items-center gap-2 p-2 rounded-xl bg-[#0f1016] border border-[#33354a]"
                 >
                   <span className="w-6 text-center text-xs text-[#8f93ad] font-mono">
-                    {idx === 0 ? "★" : idx}
+                    {idx === 0 ? "â˜…" : idx}
                   </span>
                   <input
                     type="text"
@@ -1723,7 +1753,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <span className="text-xs text-[#8f93ad] px-2">(প্রধান)</span>
+                    <span className="text-xs text-[#8f93ad] px-2">(à¦ªà§à¦°à¦§à¦¾à¦¨)</span>
                   )}
                 </div>
               ))}
@@ -1734,14 +1764,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 markDirty();
                 setCfg((c) => {
                   const copy = JSON.parse(JSON.stringify(c));
-                  copy.categories.push("নতুন ক্যাটাগরি");
+                  copy.categories.push("à¦¨à¦¤à§à¦¨ à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿");
                   return copy;
                 });
               }}
               className="w-full py-2.5 rounded-xl border border-dashed border-pink-500 text-pink-400 text-xs font-semibold hover:bg-pink-500/10 transition-colors cursor-pointer flex items-center justify-center gap-1"
             >
               <Plus className="w-4 h-4" />
-              <span>+ নতুন ক্যাটাগরি যোগ করুন</span>
+              <span>+ à¦¨à¦¤à§à¦¨ à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿ à¦¯à§‹à¦— à¦•à¦°à§à¦¨</span>
             </button>
           </div>
         )}
@@ -1751,7 +1781,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-[#8f93ad]">
-                মোট ভিডিও: <span className="text-white font-bold">{cfg.videos?.length || 0}</span> টি
+                à¦®à§‹à¦Ÿ à¦­à¦¿à¦¡à¦¿à¦“: <span className="text-white font-bold">{cfg.videos?.length || 0}</span> à¦Ÿà¦¿
               </p>
               <button
                 onClick={() => {
@@ -1760,8 +1790,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     const copy = JSON.parse(JSON.stringify(c));
                     copy.videos.push({
                       id: "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-                      title: "নতুন আকর্ষণীয় ভিডিও",
-                      cat: copy.categories[1] || copy.categories[0] || "ফানি",
+                      title: "à¦¨à¦¤à§à¦¨ à¦†à¦•à¦°à§à¦·à¦£à§€à¦¯à¦¼ à¦­à¦¿à¦¡à¦¿à¦“",
+                      cat: copy.categories[1] || copy.categories[0] || "à¦«à¦¾à¦¨à¦¿",
                       dur: "03:00",
                       views: 0,
                       likes: 0,
@@ -1775,8 +1805,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white text-xs font-bold flex items-center gap-1 cursor-pointer shadow"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>নতুন ভিডিও যোগ করুন</span>
+                <span>à¦¨à¦¤à§à¦¨ à¦­à¦¿à¦¡à¦¿à¦“ à¦¯à§‹à¦— à¦•à¦°à§à¦¨</span>
               </button>
+            </div>
+
+            {/* Recommended Video Hosting Guide Card */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/40 via-purple-950/40 to-[#1a1b26] border border-blue-500/30 space-y-2.5">
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-300">
+                <Sparkles className="w-4 h-4 text-blue-400" />
+                <span>à¦­à¦¿à¦¡à¦¿à¦“ à¦¹à§‹à¦¸à§à¦Ÿà¦¿à¦‚ à¦ªà¦°à¦¾à¦®à¦°à§à¦¶: à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­ / à¦¡à§à¦°à¦ªà¦¬à¦•à§à¦¸ à¦¬à¦¾à¦¦à§‡ à¦¸à§‡à¦°à¦¾ à¦¸à¦¾à¦‡à¦Ÿà¦¸à¦®à§‚à¦¹</span>
+              </div>
+              <p className="text-[11px] text-[#8f93ad] leading-relaxed">
+                à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­ à¦“ à¦¡à§à¦°à¦ªà¦¬à¦•à§à¦¸à§‡ à¦…à¦¨à§‡à¦• à¦¸à¦®à¦¯à¦¼ à¦Ÿà§à¦°à¦¾à¦«à¦¿à¦• à¦²à¦¿à¦®à¦¿à¦Ÿ à¦¬à¦¾ à¦²à§‹à¦¡à¦¿à¦‚à¦¯à¦¼à§‡ à¦¦à§‡à¦°à¦¿ à¦¹à¦¯à¦¼à¥¤ à¦¦à§à¦°à§à¦¤ à¦ªà§à¦²à§‡ à¦•à¦°à¦¾à¦° à¦œà¦¨à§à¦¯ à¦¨à¦¿à¦šà§‡à¦° à¦¯à§‡à¦•à§‹à¦¨à§‹ à¦¸à¦¾à¦°à§à¦­à¦¿à¦¸ à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2.5 rounded-xl bg-[#0f1016] border border-[#33354a]">
+                  <b className="text-white">à§§. Bunny.net (Bunny Stream):</b>
+                  <p className="text-[#8f93ad] mt-0.5">à¦¸à¦¬à¦šà§‡à¦¯à¦¼à§‡ à¦•à¦® à¦–à¦°à¦šà§‡ à¦¸à§à¦ªà¦¾à¦° à¦«à¦¾à¦¸à§à¦Ÿ à¦­à¦¿à¦¡à¦¿à¦“ à¦¸à§à¦Ÿà§à¦°à¦¿à¦®à¦¿à¦‚ à¦“ à¦¡à¦¿à¦°à§‡à¦•à§à¦Ÿ MP4/HLS à¦²à¦¿à¦‚à¦• à¦¦à§‡à¦¯à¦¼à¥¤ à¦•à§‹à¦¨à§‹ à¦¬à¦¾à¦«à¦¾à¦°à¦¿à¦‚ à¦¬à¦¾ à¦²à¦¿à¦®à¦¿à¦Ÿ à¦¨à§‡à¦‡à¥¤</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#0f1016] border border-[#33354a]">
+                  <b className="text-white">à§¨. Cloudflare R2 (à¦«à§à¦°à¦¿ à§§à§¦ GB):</b>
+                  <p className="text-[#8f93ad] mt-0.5">à¦•à§‹à¦¨à§‹ à¦¬à§à¦¯à¦¾à¦¨à§à¦¡à¦‰à¦‡à¦¥ à¦–à¦°à¦š à¦¨à§‡à¦‡ (Zero Egress)à¥¤ à¦¡à¦¿à¦°à§‡à¦•à§à¦Ÿ à¦ªà¦¾à¦¬à¦²à¦¿à¦• à¦²à¦¿à¦‚à¦•à§‡ à¦­à¦¿à¦¡à¦¿à¦“ à¦‡à¦¨à¦¸à§à¦Ÿà§à¦¯à¦¾à¦¨à§à¦Ÿ à¦ªà§à¦²à§‡ à¦¹à¦¯à¦¼à¥¤</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#0f1016] border border-[#33354a]">
+                  <b className="text-white">à§©. Internet Archive (archive.org):</b>
+                  <p className="text-[#8f93ad] mt-0.5">à§§à§¦à§¦% à¦¸à¦®à§à¦ªà§‚à¦°à§à¦£ à¦«à§à¦°à¦¿ à¦“ à¦†à¦¨à¦²à¦¿à¦®à¦¿à¦Ÿà§‡à¦¡à¥¤ à¦­à¦¿à¦¡à¦¿à¦“ à¦†à¦ªà¦²à§‹à¦¡ à¦•à¦°à¦²à§‡ à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦¹à¦¾à¦‡-à¦¸à§à¦ªà¦¿à¦¡ .mp4 à¦²à¦¿à¦‚à¦• à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¥¤</p>
+                </div>
+                <div className="p-2.5 rounded-xl bg-[#0f1016] border border-[#33354a]">
+                  <b className="text-white">à§ª. à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡ à¦†à¦ªà¦²à§‹à¦¡ (Upload):</b>
+                  <p className="text-[#8f93ad] mt-0.5">à¦ªà§à¦°à¦¤à¦¿à¦Ÿà¦¿ à¦­à¦¿à¦¡à¦¿à¦“à¦° à¦ªà¦¾à¦¶à§‡ à¦¥à¦¾à¦•à¦¾ &apos;à¦†à¦ªà¦²à§‹à¦¡&apos; à¦¬à¦¾à¦Ÿà¦¨ à¦¦à¦¿à¦¯à¦¼à§‡ à¦«à¦¾à¦‡à¦² à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦†à¦ªà¦¨à¦¾à¦° à¦¸à¦¾à¦°à§à¦­à¦¾à¦°à§‡ à¦¹à§‹à¦¸à§à¦Ÿ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à§‡à¦¨à¥¤</p>
+                </div>
+              </div>
             </div>
 
             {(cfg.videos || []).map((video, idx) => {
@@ -1826,7 +1885,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="sm:col-span-2">
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        ভিডিওর শিরোনাম
+                        à¦­à¦¿à¦¡à¦¿à¦“à¦° à¦¶à¦¿à¦°à§‹à¦¨à¦¾à¦®
                       </label>
                       <input
                         type="text"
@@ -1838,7 +1897,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        ক্যাটাগরি
+                        à¦•à§à¦¯à¦¾à¦Ÿà¦¾à¦—à¦°à¦¿
                       </label>
                       <select
                         value={video.cat}
@@ -1858,7 +1917,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        সময় (MM:SS)
+                        à¦¸à¦®à¦¯à¦¼ (MM:SS)
                       </label>
                       <input
                         type="text"
@@ -1870,7 +1929,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        বিজ্ঞাপন সংখ্যা (০ = ফ্রি)
+                        à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¸à¦‚à¦–à§à¦¯à¦¾ (à§¦ = à¦«à§à¦°à¦¿)
                       </label>
                       <input
                         type="number"
@@ -1885,7 +1944,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        ভিউ (শুরুর সংখ্যা)
+                        à¦­à¦¿à¦‰ (à¦¶à§à¦°à§à¦° à¦¸à¦‚à¦–à§à¦¯à¦¾)
                       </label>
                       <input
                         type="number"
@@ -1900,7 +1959,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                     <div>
                       <label className="text-xs text-[#8f93ad] block mb-1">
-                        লাইক (শুরুর সংখ্যা)
+                        à¦²à¦¾à¦‡à¦• (à¦¶à§à¦°à§à¦° à¦¸à¦‚à¦–à§à¦¯à¦¾)
                       </label>
                       <input
                         type="number"
@@ -1918,7 +1977,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] space-y-2">
                     <div className="flex items-center justify-between">
                       <label className="text-xs text-[#8f93ad] block">
-                        ভিডিও ফাইল লিংক (গুগল ড্রাইভ, ড্রপবক্স, mp4 লিংক বা আপলোড)
+                        à¦­à¦¿à¦¡à¦¿à¦“ à¦«à¦¾à¦‡à¦² à¦²à¦¿à¦‚à¦• (à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­, à¦¡à§à¦°à¦ªà¦¬à¦•à§à¦¸, mp4 à¦²à¦¿à¦‚à¦• à¦¬à¦¾ à¦†à¦ªà¦²à§‹à¦¡)
                       </label>
                       {video.src && (
                         <button
@@ -1927,7 +1986,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           className="text-[11px] text-pink-400 hover:text-pink-300 font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                         >
                           <Play className="w-3 h-3 fill-current" />
-                          <span>টেস্ট ও প্রিভিউ</span>
+                          <span>à¦Ÿà§‡à¦¸à§à¦Ÿ à¦“ à¦ªà§à¦°à¦¿à¦­à¦¿à¦‰</span>
                         </button>
                       )}
                     </div>
@@ -1938,14 +1997,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         onChange={(e) => {
                           const val = e.target.value;
                           const normalized = normalizeMediaUrl(val);
-                          updateConfigValue(`videos.${idx}.src`, normalized);
+                          markDirty();
+                          setCfg((prev) => {
+                            const clone = JSON.parse(JSON.stringify(prev));
+                            if (!clone.videos[idx]) return clone;
+                            clone.videos[idx].src = normalized;
+                            // Auto populate Google Drive thumbnail if thumbnail is empty
+                            if (!clone.videos[idx].thumb) {
+                              const autoThumb = getGoogleDriveThumbnailUrl(val);
+                              if (autoThumb) {
+                                clone.videos[idx].thumb = autoThumb;
+                              }
+                            }
+                            return clone;
+                          });
                         }}
-                        placeholder="Google Drive, Dropbox অথবা সরাসরি MP4 লিংক পেস্ট করুন"
+                        placeholder="Google Drive, Dropbox à¦…à¦¥à¦¬à¦¾ à¦¸à¦°à¦¾à¦¸à¦°à¦¿ MP4 à¦²à¦¿à¦‚à¦• à¦ªà§‡à¦¸à§à¦Ÿ à¦•à¦°à§à¦¨"
                         className="flex-1 px-3 py-2 rounded-xl bg-[#1a1b26] border border-[#33354a] text-xs text-white outline-none focus:border-pink-500 font-mono"
                       />
                       <label className="px-3 py-2 rounded-xl bg-[#262838] border border-[#33354a] hover:bg-white/10 text-xs font-semibold text-white cursor-pointer flex items-center gap-1.5 shrink-0">
                         <Upload className="w-3.5 h-3.5" />
-                        <span>আপলোড</span>
+                        <span>à¦†à¦ªà¦²à§‹à¦¡</span>
                         <input
                           type="file"
                           accept="video/mp4,video/webm,video/quicktime"
@@ -1959,13 +2031,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     {video.src && (video.src.includes("/api/stream-drive") || isGoogleDriveUrl(video.src)) && (
                       <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-[11px] text-blue-300 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                        <span>⚡ গুগল ড্রাইভ সরাসরি স্ট্রিমিং মোড সক্রিয়! (ফাইল &apos;Anyone with the link&apos; শেয়ার থাকতে হবে)</span>
+                        <span>âš¡ à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­ à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦¸à§à¦Ÿà§à¦°à¦¿à¦®à¦¿à¦‚ à¦®à§‹à¦¡ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼! (à¦«à¦¾à¦‡à¦² &apos;Anyone with the link&apos; à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦¥à¦¾à¦•à¦¤à§‡ à¦¹à¦¬à§‡)</span>
                       </div>
                     )}
                     {video.src && isDropboxUrl(video.src) && (
                       <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-[11px] text-purple-300 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                        <span>⚡ ড্রপবক্স সরাসরি স্ট্রিমিং মোড সক্রিয়!</span>
+                        <span>âš¡ à¦¡à§à¦°à¦ªà¦¬à¦•à§à¦¸ à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦¸à§à¦Ÿà§à¦°à¦¿à¦®à¦¿à¦‚ à¦®à§‹à¦¡ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼!</span>
+                      </div>
+                    )}
+                    {video.src && isTeraboxUrl(video.src) && (
+                      <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/30 text-[11px] text-blue-300 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                        <span>âš¡ à¦Ÿà§‡à¦°à¦¾à¦¬à¦•à§à¦¸ (Terabox) à¦²à¦¿à¦‚à¦• à¦¸à¦¨à¦¾à¦•à§à¦¤ à¦¹à¦¯à¦¼à§‡à¦›à§‡! à¦¸à¦°à¦¾à¦¸à¦°à¦¿ à¦ªà§à¦²à§‡à¦¯à¦¼à¦¾à¦° à¦à¦®à§à¦¬à§‡à¦¡ à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼à¥¤</span>
                       </div>
                     )}
 
@@ -1977,19 +2055,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {/* Thumbnail Source & Upload */}
                   <div className="p-3 rounded-xl bg-[#0f1016] border border-[#33354a] space-y-2">
                     <label className="text-xs text-[#8f93ad] block">
-                      থাম্বনেইল লিংক বা ছবি আপলোড
+                      à¦¥à¦¾à¦®à§à¦¬à¦¨à§‡à¦‡à¦² à¦²à¦¿à¦‚à¦• à¦¬à¦¾ à¦›à¦¬à¦¿ à¦†à¦ªà¦²à§‹à¦¡
                     </label>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         value={video.thumb}
                         onChange={(e) => updateConfigValue(`videos.${idx}.thumb`, e.target.value)}
-                        placeholder="https://... অথবা ছবি আপলোড করুন"
+                        placeholder="https://... à¦…à¦¥à¦¬à¦¾ à¦›à¦¬à¦¿ à¦†à¦ªà¦²à§‹à¦¡ à¦•à¦°à§à¦¨"
                         className="flex-1 px-3 py-2 rounded-xl bg-[#1a1b26] border border-[#33354a] text-xs text-white outline-none"
                       />
                       <label className="px-3 py-2 rounded-xl bg-[#262838] border border-[#33354a] hover:bg-white/10 text-xs font-semibold text-white cursor-pointer flex items-center gap-1.5 shrink-0">
                         <ImageIcon className="w-3.5 h-3.5" />
-                        <span>ছবি আপলোড</span>
+                        <span>à¦›à¦¬à¦¿ à¦†à¦ªà¦²à§‹à¦¡</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2001,13 +2079,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     {thumbProg && (
                       <p className="text-xs font-mono text-pink-400">{thumbProg}</p>
                     )}
-                    {video.thumb && (
-                      <div className="mt-2">
+                    {(video.thumb || getGoogleDriveThumbnailUrl(video.src)) && (
+                      <div className="mt-2 flex items-center gap-2.5">
                         <img
-                          src={video.thumb}
+                          src={video.thumb || getGoogleDriveThumbnailUrl(video.src)!}
                           alt="preview"
-                          className="h-16 rounded-lg object-cover border border-[#33354a]"
+                          className="h-16 w-28 rounded-lg object-cover border border-[#33354a]"
                         />
+                        {!video.thumb && getGoogleDriveThumbnailUrl(video.src) && (
+                          <span className="text-[11px] text-pink-400 font-medium">
+                            âœ¨ à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­ à¦…à¦Ÿà§‹-à¦¥à¦¾à¦®à§à¦¬à¦¨à§‡à¦‡à¦² à¦¸à¦•à§à¦°à¦¿à¦¯à¦¼
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2022,8 +2105,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   const copy = JSON.parse(JSON.stringify(c));
                   copy.videos.push({
                     id: "v" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
-                    title: "নতুন ভিডিও",
-                    cat: copy.categories[1] || copy.categories[0] || "ফানি",
+                    title: "à¦¨à¦¤à§à¦¨ à¦­à¦¿à¦¡à¦¿à¦“",
+                    cat: copy.categories[1] || copy.categories[0] || "à¦«à¦¾à¦¨à¦¿",
                     dur: "03:00",
                     views: 0,
                     likes: 0,
@@ -2037,7 +2120,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="w-full py-3 rounded-2xl border border-dashed border-pink-500 text-pink-400 text-sm font-semibold hover:bg-pink-500/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>+ নতুন ভিডিও যোগ করুন</span>
+              <span>+ à¦¨à¦¤à§à¦¨ à¦­à¦¿à¦¡à¦¿à¦“ à¦¯à§‹à¦— à¦•à¦°à§à¦¨</span>
             </button>
           </div>
         )}
@@ -2046,43 +2129,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {activeSection === "ads" && (
           <div className="p-5 rounded-2xl bg-[#1a1b26] border border-[#33354a] space-y-4">
             <h3 className="text-sm font-bold text-white border-b border-[#33354a] pb-2">
-              বিজ্ঞাপন ও মনিটাইজেশন কনফিগারেশন
+              à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦“ à¦®à¦¨à¦¿à¦Ÿà¦¾à¦‡à¦œà§‡à¦¶à¦¨ à¦•à¦¨à¦«à¦¿à¦—à¦¾à¦°à§‡à¦¶à¦¨
             </h3>
             <p className="text-xs text-[#8f93ad]">
-              ভিডিও আনলক করতে ইউজার কয়টি বিজ্ঞাপন দেখবে তা ঠিক করুন। প্রতিটি ভিডিওতে আলাদা করে বিজ্ঞাপনের সংখ্যা নির্ধারণ করতে পারবেন।
+              à¦­à¦¿à¦¡à¦¿à¦“ à¦†à¦¨à¦²à¦• à¦•à¦°à¦¤à§‡ à¦‡à¦‰à¦œà¦¾à¦° à¦•à¦¯à¦¼à¦Ÿà¦¿ à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à¦¬à§‡ à¦¤à¦¾ à¦ à¦¿à¦• à¦•à¦°à§à¦¨à¥¤ à¦ªà§à¦°à¦¤à¦¿à¦Ÿà¦¿ à¦­à¦¿à¦¡à¦¿à¦“à¦¤à§‡ à¦†à¦²à¦¾à¦¦à¦¾ à¦•à¦°à§‡ à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨à§‡à¦° à¦¸à¦‚à¦–à§à¦¯à¦¾ à¦¨à¦¿à¦°à§à¦§à¦¾à¦°à¦£ à¦•à¦°à¦¤à§‡ à¦ªà¦¾à¦°à¦¬à§‡à¦¨à¥¤
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  বিজ্ঞাপনের ধরন (Ad Provider)
+                  à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨à§‡à¦° à¦§à¦°à¦¨ (Ad Provider)
                 </label>
                 <select
-                  value={cfg.ads.provider}
+                  value={cfg.ads.provider || "adsterra"}
                   onChange={(e) => updateConfigValue("ads.provider", e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none cursor-pointer"
                 >
-                  <option value="demo">ডেমো কাউন্টডাউন টাইমার (Demo)</option>
-                  <option value="adsgram">Adsgram (টেলিগ্রাম আসল বিজ্ঞাপন)</option>
+                  <option value="adsterra">Adsterra (à¦¸à§à¦®à¦¾à¦°à§à¦Ÿà¦²à¦¿à¦™à§à¦• / à¦¡à¦¿à¦°à§‡à¦•à§à¦Ÿ à¦²à¦¿à¦™à§à¦• - à§§à§¦à§¦% à¦°à¦¿à¦¯à¦¼à§‡à¦² à¦“ à¦•à¦¾à¦°à§à¦¯à¦•à¦°)</option>
+                  <option value="demo">à¦¡à§‡à¦®à§‹ à¦•à¦¾à¦‰à¦¨à§à¦Ÿà¦¡à¦¾à¦‰à¦¨ à¦Ÿà¦¾à¦‡à¦®à¦¾à¦° (Demo)</option>
+                  <option value="adsgram">Adsgram (à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦†à¦¸à¦² à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨)</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  Adsgram Block ID (যদি Adsgram ব্যবহার করেন)
+                  Adsterra Direct Link (Smartlink URL)
                 </label>
                 <input
-                  type="text"
-                  value={cfg.ads.blockId}
-                  placeholder="যেমন: 1234"
-                  onChange={(e) => updateConfigValue("ads.blockId", e.target.value)}
+                  type="url"
+                  value={cfg.ads.adsterraUrl || ""}
+                  placeholder="https://www.profitablecpmrate.com/..."
+                  onChange={(e) => updateConfigValue("ads.adsterraUrl", e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none"
                 />
               </div>
 
+              {cfg.ads.provider === "adsgram" && (
+                <div>
+                  <label className="text-xs text-[#8f93ad] block mb-1">
+                    Adsgram Block ID (à¦¯à¦¦à¦¿ Adsgram à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦° à¦•à¦°à§‡à¦¨)
+                  </label>
+                  <input
+                    type="text"
+                    value={cfg.ads.blockId || ""}
+                    placeholder="à¦¯à§‡à¦®à¦¨: 1234"
+                    onChange={(e) => updateConfigValue("ads.blockId", e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none"
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  ডেমো বিজ্ঞাপনের সময় (সেকেন্ড)
+                  à¦¡à§‡à¦®à§‹ à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨à§‡à¦° à¦¸à¦®à¦¯à¦¼ (à¦¸à§‡à¦•à§‡à¦¨à§à¦¡)
                 </label>
                 <input
                   type="number"
@@ -2098,7 +2197,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  লক ব্যাজের লেখা (যেমন: Ads)
+                  à¦²à¦• à¦¬à§à¦¯à¦¾à¦œà§‡à¦° à¦²à§‡à¦–à¦¾ (à¦¯à§‡à¦®à¦¨: Ads)
                 </label>
                 <input
                   type="text"
@@ -2107,12 +2206,34 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   className="w-full px-3 py-2 rounded-xl bg-[#0f1016] border border-[#33354a] text-sm text-white outline-none"
                 />
               </div>
+
+              <div className="sm:col-span-2 p-3.5 rounded-xl bg-[#0f1016] border border-pink-500/30 space-y-1.5">
+                <label className="text-xs text-pink-300 font-bold flex items-center gap-1.5">
+                  <Lock className="w-3.5 h-3.5 text-pink-400" />
+                  <span>à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦†à¦¨à¦²à¦•à§‡à¦° à¦¸à§à¦¥à¦¾à¦¯à¦¼à¦¿à¦¤à§à¦¬ (Lock/Unlock Policy)</span>
+                </label>
+                <select
+                  value={cfg.ads.unlockDuration || "session"}
+                  onChange={(e) => updateConfigValue("ads.unlockDuration", e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-[#1a1b26] border border-[#33354a] text-xs text-white outline-none cursor-pointer focus:border-pink-500"
+                >
+                  <option value="session">
+                    ðŸ”’ à¦¸à§‡à¦¶à¦¨ à¦­à¦¿à¦¤à§à¦¤à¦¿à¦• (à¦à¦•à¦¬à¦¾à¦° à¦¬à§‡à¦° à¦¹à¦¯à¦¼à§‡ à¦ªà§à¦¨à¦°à¦¾à¦¯à¦¼ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦•à¦°à¦²à§‡ à¦†à¦¬à¦¾à¦° à¦²à¦• à¦¹à¦¬à§‡ - à¦°à¦¿à¦•à¦®à§‡à¦¨à§à¦¡à§‡à¦¡)
+                  </option>
+                  <option value="forever">
+                    ðŸ”“ à¦šà¦¿à¦°à¦¤à¦°à§‡ à¦†à¦¨à¦²à¦• (à¦à¦•à¦¬à¦¾à¦° à¦…à§à¦¯à¦¾à¦¡ à¦¦à§‡à¦–à¦²à§‡ à¦ªà¦¾à¦°à¦®à¦¾à¦¨à§‡à¦¨à§à¦Ÿà¦²à¦¿ à¦†à¦¨à¦²à¦• à¦¥à¦¾à¦•à¦¬à§‡)
+                  </option>
+                </select>
+                <p className="text-[11px] text-[#8f93ad] leading-relaxed">
+                  ðŸ’¡ <b>à¦¸à§‡à¦¶à¦¨ à¦­à¦¿à¦¤à§à¦¤à¦¿à¦•:</b> à¦¬à§à¦¯à¦¬à¦¹à¦¾à¦°à¦•à¦¾à¦°à§€ à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦®à¦¿à¦¨à¦¿ à¦…à§à¦¯à¦¾à¦ª à¦¬à¦¨à§à¦§ à¦•à¦°à§‡ à¦¬à§‡à¦° à¦¹à¦¯à¦¼à§‡ à¦—à§‡à¦²à§‡ à¦à¦¬à¦‚ à¦ªà¦°à§‡ à¦†à¦¬à¦¾à¦° à¦¢à§à¦•à¦²à§‡ à¦¸à¦¬à¦—à§à¦²à§‹ à¦­à¦¿à¦¡à¦¿à¦“ à¦ªà§à¦¨à¦°à¦¾à¦¯à¦¼ à¦²à¦• à¦¥à¦¾à¦•à¦¬à§‡ à¦à¦¬à¦‚ à¦¨à¦¤à§à¦¨ à¦•à¦°à§‡ à¦…à§à¦¯à¦¾à¦¡ à¦¦à§‡à¦–à¦¤à§‡ à¦¹à¦¬à§‡à¥¤
+                </p>
+              </div>
             </div>
 
             <div className="space-y-3 pt-2">
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  আনলক পপআপের শিরোনাম
+                  à¦†à¦¨à¦²à¦• à¦ªà¦ªà¦†à¦ªà§‡à¦° à¦¶à¦¿à¦°à§‹à¦¨à¦¾à¦®
                 </label>
                 <input
                   type="text"
@@ -2124,7 +2245,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div>
                 <label className="text-xs text-[#8f93ad] block mb-1">
-                  আনলক পপআপের টেক্সট (<span className="text-pink-400 font-mono">{"{n}"}</span> = বাকি বিজ্ঞাপনের সংখ্যা)
+                  à¦†à¦¨à¦²à¦• à¦ªà¦ªà¦†à¦ªà§‡à¦° à¦Ÿà§‡à¦•à§à¦¸à¦Ÿ (<span className="text-pink-400 font-mono">{"{n}"}</span> = à¦¬à¦¾à¦•à¦¿ à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨à§‡à¦° à¦¸à¦‚à¦–à§à¦¯à¦¾)
                 </label>
                 <input
                   type="text"
@@ -2137,7 +2258,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    বিজ্ঞাপন দেখার বাটনের লেখা
+                    à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à¦¾à¦° à¦¬à¦¾à¦Ÿà¦¨à§‡à¦° à¦²à§‡à¦–à¦¾
                   </label>
                   <input
                     type="text"
@@ -2149,7 +2270,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
                 <div>
                   <label className="text-xs text-[#8f93ad] block mb-1">
-                    বাতিল বাটনের লেখা
+                    à¦¬à¦¾à¦¤à¦¿à¦² à¦¬à¦¾à¦Ÿà¦¨à§‡à¦° à¦²à§‡à¦–à¦¾
                   </label>
                   <input
                     type="text"
@@ -2173,11 +2294,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 text-white font-bold text-sm shadow-lg hover:opacity-95 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
             >
               <Save className="w-4 h-4" />
-              <span>💾 পরিবর্তন সেভ করুন</span>
+              <span>ðŸ’¾ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨ à¦¸à§‡à¦­ à¦•à¦°à§à¦¨</span>
             </button>
             {isDirty && (
               <span className="hidden sm:inline text-xs text-amber-400 font-medium">
-                ● সেভ করা বাকি
+                â— à¦¸à§‡à¦­ à¦•à¦°à¦¾ à¦¬à¦¾à¦•à¦¿
               </span>
             )}
           </div>
@@ -2186,9 +2307,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {saveStatus && (
               <span
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ${
-                  saveStatus.startsWith("✅")
+                  saveStatus.startsWith("âœ…")
                     ? "bg-green-500/10 text-green-400 border-green-500/30"
-                    : saveStatus.startsWith("❌")
+                    : saveStatus.startsWith("âŒ")
                     ? "bg-red-500/10 text-red-400 border-red-500/30"
                     : "bg-white/5 text-[#8f93ad] border-[#33354a]"
                 }`}
@@ -2207,7 +2328,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex items-center justify-between border-b border-[#33354a] pb-2.5">
               <span className="text-xs font-bold text-white flex items-center gap-1.5">
                 <Play className="w-4 h-4 text-pink-400 fill-current" />
-                <span>ভিডিও প্রিভিউ টেস্ট</span>
+                <span>à¦­à¦¿à¦¡à¦¿à¦“ à¦ªà§à¦°à¦¿à¦­à¦¿à¦‰ à¦Ÿà§‡à¦¸à§à¦Ÿ</span>
               </span>
               <button
                 onClick={() => setPreviewModalUrl(null)}
@@ -2228,7 +2349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </div>
 
             <p className="text-[11px] text-[#a58bb8] leading-relaxed">
-              💡 ভিডিওটি চালু হলে বুঝবেন লিংকটি পুরোপুরি কার্যকর। গুগল ড্রাইভ ভিডিও না চললে ফাইলে &apos;Anyone with the link&apos; শেয়ার পারমিশন চালু আছে কিনা নিশ্চিত করুন।
+              ðŸ’¡ à¦­à¦¿à¦¡à¦¿à¦“à¦Ÿà¦¿ à¦šà¦¾à¦²à§ à¦¹à¦²à§‡ à¦¬à§à¦à¦¬à§‡à¦¨ à¦²à¦¿à¦‚à¦•à¦Ÿà¦¿ à¦ªà§à¦°à§‹à¦ªà§à¦°à¦¿ à¦•à¦¾à¦°à§à¦¯à¦•à¦°à¥¤ à¦—à§à¦—à¦² à¦¡à§à¦°à¦¾à¦‡à¦­ à¦­à¦¿à¦¡à¦¿à¦“ à¦¨à¦¾ à¦šà¦²à¦²à§‡ à¦«à¦¾à¦‡à¦²à§‡ &apos;Anyone with the link&apos; à¦¶à§‡à¦¯à¦¼à¦¾à¦° à¦ªà¦¾à¦°à¦®à¦¿à¦¶à¦¨ à¦šà¦¾à¦²à§ à¦†à¦›à§‡ à¦•à¦¿à¦¨à¦¾ à¦¨à¦¿à¦¶à§à¦šà¦¿à¦¤ à¦•à¦°à§à¦¨à¥¤
             </p>
           </div>
         </div>
