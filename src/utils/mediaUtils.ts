@@ -81,15 +81,18 @@ export function normalizeMediaUrl(url: string): string {
   if (!url) return "";
   const clean = url.trim();
 
+  // 1. Google Drive -> Convert to direct backend streaming proxy
   const driveId = extractGoogleDriveId(clean);
   if (driveId) {
     return `/api/stream-drive?id=${driveId}`;
   }
 
+  // 2. Dropbox -> Convert directly to dl.dropboxusercontent.com CDN URL
   if (isDropboxUrl(clean)) {
     return getDropboxDirectUrl(clean);
   }
 
+  // 3. OneDrive -> ensure download=1
   if (/1drv\.ms|onedrive\.live\.com/i.test(clean)) {
     if (clean.includes("resid=") && !clean.includes("download=1")) {
       const sep = clean.includes("?") ? "&" : "?";
