@@ -214,6 +214,20 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
   };
 
   const startWatchingAd = (video: VideoItem) => {
+    // If Adsterra provider with Direct Link URL, open it in Telegram WebApp or new window
+    if (config.ads?.provider === "adsterra" && config.ads?.adsterraUrl) {
+      try {
+        const tg = (window as any).Telegram?.WebApp;
+        if (tg && typeof tg.openLink === "function") {
+          tg.openLink(config.ads.adsterraUrl);
+        } else {
+          window.open(config.ads.adsterraUrl, "_blank");
+        }
+      } catch (e) {
+        console.warn("Could not open Adsterra URL:", e);
+      }
+    }
+
     const seconds = config.ads?.demoSeconds || 5;
     setModalState({ type: "ad_playing", video, countdown: seconds });
 
@@ -771,9 +785,11 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             {modalState.type === "ad_playing" && (
               <div className="py-4">
                 <div className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-white/10 text-white/80 mb-3">
-                  Sponsored Partner Ad
+                  {config.ads?.provider === "adsterra" ? "Adsterra Sponsored Ad" : "Sponsored Partner Ad"}
                 </div>
-                <h3 className="text-base font-bold">à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦šà¦²à¦›à§‡...</h3>
+                <h3 className="text-base font-bold">
+                  {config.ads?.provider === "adsterra" ? "Adsterra à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦šà¦¾à¦²à§ à¦¹à¦¯à¦¼à§‡à¦›à§‡..." : "à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦šà¦²à¦›à§‡..."}
+                </h3>
                 <p className="text-xs mt-1" style={{ color: theme.mute }}>
                   à¦•à¦¾à¦‰à¦¨à§à¦Ÿà¦¡à¦¾à¦‰à¦¨ à¦¶à§‡à¦· à¦¹à¦²à§‡ à¦­à¦¿à¦¡à¦¿à¦“ à¦†à¦¨à¦²à¦• à¦¹à¦¬à§‡
                 </p>
@@ -793,6 +809,20 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     {modalState.countdown}
                   </div>
                 </div>
+
+                {config.ads?.provider === "adsterra" && config.ads?.adsterraUrl && (
+                  <div className="mb-3">
+                    <a
+                      href={config.ads.adsterraUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 transition-all"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à¦¤à§‡ à¦à¦–à¦¾à¦¨à§‡ à¦šà¦¾à¦ªà§à¦¨ (Adsterra)</span>
+                    </a>
+                  </div>
+                )}
 
                 <p className="text-[11px] opacity-70">
                   à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¶à§‡à¦· à¦¹à¦“à¦¯à¦¼à¦¾à¦° à¦œà¦¨à§à¦¯ à¦…à¦ªà§‡à¦•à§à¦·à¦¾ à¦•à¦°à§à¦¨
