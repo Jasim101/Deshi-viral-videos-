@@ -49,7 +49,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
   isAdmin = false,
 }) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [activeCat, setActiveCat] = useState(config.categories?.[0] || "à¦¸à¦¬à¦—à§à¦²à§‹");
+  const [activeCat, setActiveCat] = useState(config.categories?.[0] || "সবগুলো");
   const [searchQuery, setSearchQuery] = useState("");
   const isSessionOnly = (config.ads?.unlockDuration ?? "session") === "session";
 
@@ -154,7 +154,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
 
   useEffect(() => {
     if (config.categories && !config.categories.includes(activeCat)) {
-      setActiveCat(config.categories[0] || "à¦¸à¦¬à¦—à§à¦²à§‹");
+      setActiveCat(config.categories[0] || "সবগুলো");
     }
   }, [config.categories]);
 
@@ -289,14 +289,14 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
       }
     } catch {}
     closeModal();
-    setReenterNotice("ðŸšª à¦…à§à¦¯à¦¾à¦ª à¦¥à§‡à¦•à§‡ à¦¬à§‡à¦° à¦¹à¦¯à¦¼à§‡ à¦ªà§à¦¨à¦°à¦¾à¦¯à¦¼ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦•à¦°à¦¾ à¦¹à¦¯à¦¼à§‡à¦›à§‡ â€” à¦†à¦¨à¦²à¦• à¦°à¦¿à¦¸à§‡à¦Ÿ à¦¹à¦¯à¦¼à§‡à¦›à§‡, à¦†à¦¬à¦¾à¦° à¦…à§à¦¯à¦¾à¦¡ à¦¦à§‡à¦–à¦¤à§‡ à¦¹à¦¬à§‡!");
+    setReenterNotice("🚪 অ্যাপ থেকে বের হয়ে পুনরায় প্রবেশ করা হয়েছে — আনলক রিসেট হয়েছে, আবার অ্যাড দেখতে হবে!");
     setTimeout(() => {
       setReenterNotice(null);
     }, 4000);
   };
 
   const resetAllProgress = () => {
-    if (confirm("à¦¸à¦®à¦¸à§à¦¤ à¦†à¦¨à¦²à¦• à¦“ à¦²à¦¾à¦‡à¦•à§‡à¦° à¦²à§‹à¦•à¦¾à¦² à¦ªà§à¦°à¦—à§à¦°à§‡à¦¸ à¦°à¦¿à¦¸à§‡à¦Ÿ à¦•à¦°à¦¤à§‡ à¦šà¦¾à¦¨?")) {
+    if (confirm("সমস্ত আনলক ও লাইকের লোকাল প্রগ্রেস রিসেট করতে চান?")) {
       localStorage.removeItem("unl");
       sessionStorage.removeItem("unl");
       localStorage.removeItem("liked");
@@ -342,14 +342,14 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
         <div
           className="flex items-center gap-2 cursor-pointer select-none active:scale-95 transition-transform"
           onClick={handleLogoTap}
-          title={config.appName || "à¦«à¦¾à¦¨ à¦¹à¦¾à¦¬"}
+          title={config.appName || "ফান হাব"}
         >
           <span
             className="text-xl font-bold flex items-center gap-1.5"
             style={{ color: theme.accent1 }}
           >
-            <span>{config.logo || "â™¥"}</span>
-            <span>{config.appName || "à¦«à¦¾à¦¨ à¦¹à¦¾à¦¬"}</span>
+            <span>{config.logo || "♥"}</span>
+            <span>{config.appName || "ফান হাব"}</span>
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -362,7 +362,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 backgroundColor: "rgba(236, 72, 153, 0.15)",
                 borderColor: "rgba(236, 72, 153, 0.4)",
               }}
-              title="à¦²à¦—à¦‡à¦¨"
+              title="লগইন"
             >
               <Lock className="w-3.5 h-3.5 text-pink-400" />
             </button>
@@ -406,7 +406,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   color: theme.text,
                 }}
               >
-                <div className="shrink-0 text-base">ðŸ“¢</div>
+                <div className="shrink-0 text-base">📢</div>
                 <div className="leading-snug">{config.notice}</div>
               </div>
             )}
@@ -421,7 +421,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             >
               <input
                 type="text"
-                placeholder={config.searchPlaceholder || "à¦­à¦¿à¦¡à¦¿à¦“ à¦–à§à¦à¦œà§à¦¨..."}
+                placeholder={config.searchPlaceholder || "ভিডিও খুঁজুন..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent border-0 outline-none text-sm placeholder:opacity-50"
@@ -461,7 +461,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   className="py-12 text-center text-sm font-medium"
                   style={{ color: theme.mute }}
                 >
-                  {config.emptyText || "à¦•à§‹à¦¨à§‹ à¦­à¦¿à¦¡à¦¿à¦“ à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿"}
+                  {config.emptyText || "কোনো ভিডিও পাওয়া যায়নি"}
                 </div>
               ) : (
                 filteredVideos.map((video) => {
@@ -583,7 +583,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                           <span className="flex items-center gap-1">
                             <Eye className="w-3.5 h-3.5" />
                             <span>
-                              {Number(video.views || 0).toLocaleString("bn-BD")} à¦­à¦¿à¦‰
+                              {Number(video.views || 0).toLocaleString("bn-BD")} ভিউ
                             </span>
                           </span>
 
@@ -641,7 +641,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     background: `linear-gradient(90deg, ${theme.accent1}, ${theme.accent2})`,
                   }}
                 >
-                  <span>{item.button || "à¦œà¦¯à¦¼à§‡à¦¨"}</span>
+                  <span>{item.button || "জয়েন"}</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
               </div>
@@ -663,7 +663,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 color: theme.text,
               }}
             >
-              {currentTab.text || "à¦•à§‹à¦¨à§‹ à¦¤à¦¥à§à¦¯ à¦¦à§‡à¦“à¦¯à¦¼à¦¾ à¦¹à¦¯à¦¼à¦¨à¦¿à¥¤"}
+              {currentTab.text || "কোনো তথ্য দেওয়া হয়নি।"}
             </div>
           </div>
         )}
@@ -707,9 +707,10 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             style={{
               color: theme.mute,
             }}
-            title="à¦²à¦—à¦‡à¦¨"
+            title="লগইন"
           >
-            <span className="text-xl leading-none">ðŸ”</span>
+            <Lock className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] font-medium">লগইন</span>
           </button>
         )}
       </div>
@@ -747,10 +748,10 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   <Lock className="w-7 h-7" />
                 </div>
                 <h3 className="text-lg font-bold">
-                  {config.ads?.unlockTitle || "ðŸ”’ à¦­à¦¿à¦¡à¦¿à¦“ à¦†à¦¨à¦²à¦• à¦•à¦°à§à¦¨"}
+                  {config.ads?.unlockTitle || "🔒 ভিডিও আনলক করুন"}
                 </h3>
                 <p className="text-sm mt-2 mb-5" style={{ color: theme.mute }}>
-                  {(config.ads?.unlockText || "à¦†à¦°à¦“ {n}à¦Ÿà¦¿ à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à¦²à§‡ à¦­à¦¿à¦¡à¦¿à¦“à¦Ÿà¦¿ à¦šà¦¾à¦²à§ à¦¹à¦¬à§‡à¥¤").replace(
+                  {(config.ads?.unlockText || "আরও {n}টি বিজ্ঞাপন দেখলে ভিডিওটি চালু হবে।").replace(
                     "{n}",
                     String(getRemainingAds(modalState.video))
                   )}
@@ -765,7 +766,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     }}
                   >
                     <Play className="w-4 h-4 fill-current" />
-                    <span>{config.ads?.watchButton || "à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à§à¦¨"}</span>
+                    <span>{config.ads?.watchButton || "বিজ্ঞাপন দেখুন"}</span>
                   </button>
                   <button
                     onClick={closeModal}
@@ -775,7 +776,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                       color: theme.mute,
                     }}
                   >
-                    {config.ads?.cancelButton || "à¦¬à¦¾à¦¤à¦¿à¦²"}
+                    {config.ads?.cancelButton || "বাতিল"}
                   </button>
                 </div>
               </div>
@@ -788,10 +789,10 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   {config.ads?.provider === "adsterra" ? "Adsterra Sponsored Ad" : "Sponsored Partner Ad"}
                 </div>
                 <h3 className="text-base font-bold">
-                  {config.ads?.provider === "adsterra" ? "Adsterra à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦šà¦¾à¦²à§ à¦¹à¦¯à¦¼à§‡à¦›à§‡..." : "à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦šà¦²à¦›à§‡..."}
+                  {config.ads?.provider === "adsterra" ? "Adsterra বিজ্ঞাপন চালু হয়েছে..." : "বিজ্ঞাপন চলছে..."}
                 </h3>
                 <p className="text-xs mt-1" style={{ color: theme.mute }}>
-                  à¦•à¦¾à¦‰à¦¨à§à¦Ÿà¦¡à¦¾à¦‰à¦¨ à¦¶à§‡à¦· à¦¹à¦²à§‡ à¦­à¦¿à¦¡à¦¿à¦“ à¦†à¦¨à¦²à¦• à¦¹à¦¬à§‡
+                  কাউন্টডাউন শেষ হলে ভিডিও আনলক হবে
                 </p>
 
                 {/* Animated Circular Countdown */}
@@ -819,13 +820,13 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30 transition-all"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
-                      <span>à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¦à§‡à¦–à¦¤à§‡ à¦à¦–à¦¾à¦¨à§‡ à¦šà¦¾à¦ªà§à¦¨ (Adsterra)</span>
+                      <span>বিজ্ঞাপন দেখতে এখানে চাপুন (Adsterra)</span>
                     </a>
                   </div>
                 )}
 
                 <p className="text-[11px] opacity-70">
-                  à¦¬à¦¿à¦œà§à¦žà¦¾à¦ªà¦¨ à¦¶à§‡à¦· à¦¹à¦“à¦¯à¦¼à¦¾à¦° à¦œà¦¨à§à¦¯ à¦…à¦ªà§‡à¦•à§à¦·à¦¾ à¦•à¦°à§à¦¨
+                  বিজ্ঞাপন শেষ হওয়ার জন্য অপেক্ষা করুন
                 </p>
               </div>
             )}
@@ -843,7 +844,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
               className="flex items-center gap-1 py-1.5 px-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white text-xs font-semibold cursor-pointer transition-all active:scale-95 shrink-0"
             >
               <ChevronLeft className="w-4 h-4" />
-              <span>à¦«à¦¿à¦°à§‡ à¦¯à¦¾à¦¨</span>
+              <span>ফিরে যান</span>
             </button>
 
             <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
@@ -868,11 +869,11 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                       ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                       : "bg-white/10 hover:bg-white/20 text-white/80 border border-white/10"
                   }`}
-                  title="à¦ªà§à¦²à§‡à¦¯à¦¼à¦¾à¦° à¦®à§‹à¦¡ à¦ªà¦°à¦¿à¦¬à¦°à§à¦¤à¦¨"
+                  title="প্লেয়ার মোড পরিবর্তন"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                   <span className="hidden sm:inline">
-                    {playerMode === "cloud_embed" ? "à¦•à§à¦²à¦¾à¦‰à¦¡ à¦ªà§à¦²à§‡à¦¯à¦¼à¦¾à¦°" : "à¦¨à¦°à¦®à¦¾à¦² à¦ªà§à¦²à§‡à¦¯à¦¼à¦¾à¦°"}
+                    {playerMode === "cloud_embed" ? "ক্লাউড প্লেয়ার" : "নরমাল প্লেয়ার"}
                   </span>
                 </button>
               )}
@@ -883,23 +884,23 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   target="_blank"
                   rel="noopener noreferrer"
                   className="py-1 px-2 rounded-full text-[11px] font-bold flex items-center gap-1 bg-blue-500/20 text-blue-300 border border-blue-500/40 hover:bg-blue-500/30 cursor-pointer transition-all"
-                  title="à¦Ÿà§‡à¦°à¦¾à¦¬à¦•à§à¦¸"
+                  title="টেরাবক্স"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">à¦Ÿà§‡à¦°à¦¾à¦¬à¦•à§à¦¸</span>
+                  <span className="hidden sm:inline">টেরাবক্স</span>
                 </a>
               )}
               <button
                 onClick={() => setVideoFit(videoFit === "contain" ? "cover" : "contain")}
                 className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
-                title={videoFit === "contain" ? "à¦¸à§à¦•à§à¦°à¦¿à¦¨ à¦«à¦¿à¦²" : "à¦¸à§à¦•à§à¦°à¦¿à¦¨ à¦«à¦¿à¦Ÿ"}
+                title={videoFit === "contain" ? "স্ক্রিন ফিল" : "স্ক্রিন ফিট"}
               >
                 {videoFit === "contain" ? <Expand className="w-4 h-4" /> : <Shrink className="w-4 h-4" />}
               </button>
               <button
                 onClick={closeModal}
                 className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white transition-all cursor-pointer"
-                title="à¦¬à¦¨à§à¦§ à¦•à¦°à§à¦¨"
+                title="বন্ধ করুন"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -912,7 +913,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             {videoLoading && !videoError && playerMode === "standard" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-black/75 pointer-events-none p-4 text-center">
                 <div className="w-9 h-9 border-3 border-pink-500 border-t-transparent rounded-full animate-spin mb-2.5" />
-                <span className="text-xs text-white/90 font-medium">à¦­à¦¿à¦¡à¦¿à¦“ à¦šà¦¾à¦²à§ à¦¹à¦šà§à¦›à§‡...</span>
+                <span className="text-xs text-white/90 font-medium">ভিডিও চালু হচ্ছে...</span>
               </div>
             )}
 
@@ -967,9 +968,9 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-3 text-red-400 shadow-sm">
                   <AlertCircle className="w-6 h-6" />
                 </div>
-                <h4 className="font-semibold text-sm text-white/95 mb-1">à¦­à¦¿à¦¡à¦¿à¦“à¦Ÿà¦¿ à¦ªà§à¦²à§‡ à¦•à¦°à¦¾ à¦¸à¦®à§à¦­à¦¬ à¦¹à¦¯à¦¼à¦¨à¦¿</h4>
+                <h4 className="font-semibold text-sm text-white/95 mb-1">ভিডিওটি প্লে করা সম্ভব হয়নি</h4>
                 <p className="text-xs text-white/60 mb-5 leading-relaxed">
-                  à¦‡à¦¨à§à¦Ÿà¦¾à¦°à¦¨à§‡à¦Ÿ à¦¸à¦‚à¦¯à§‹à¦— à¦šà§‡à¦• à¦•à¦°à§à¦¨ à¦…à¦¥à¦¬à¦¾ à¦¨à¦¿à¦šà§‡à¦° à¦¬à¦¾à¦Ÿà¦¨à§‡ à¦•à§à¦²à¦¿à¦• à¦•à¦°à§‡ à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨à¥¤
+                  ইন্টারনেট সংযোগ চেক করুন অথবা নিচের বাটনে ক্লিক করে আবার চেষ্টা করুন।
                 </p>
 
                 <div className="flex items-center justify-center gap-2">
@@ -987,13 +988,13 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     className="px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white text-xs font-semibold cursor-pointer flex items-center gap-1.5 shadow transition-all active:scale-95"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>à¦†à¦¬à¦¾à¦° à¦šà§‡à¦·à§à¦Ÿà¦¾ à¦•à¦°à§à¦¨</span>
+                    <span>আবার চেষ্টা করুন</span>
                   </button>
                   <button
                     onClick={closeModal}
                     className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold cursor-pointer transition-all"
                   >
-                    à¦¬à¦¨à§à¦§ à¦•à¦°à§à¦¨
+                    বন্ধ করুন
                   </button>
                 </div>
               </div>
@@ -1030,8 +1031,8 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             ) : (
               <div className="p-6 text-center text-white/60">
                 <Volume2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm font-semibold">à¦­à¦¿à¦¡à¦¿à¦“ à¦«à¦¾à¦‡à¦² à¦ªà¦¾à¦“à¦¯à¦¼à¦¾ à¦¯à¦¾à¦¯à¦¼à¦¨à¦¿</p>
-                <p className="text-xs mt-1 text-white/40">à¦…à§à¦¯à¦¾à¦¡à¦®à¦¿à¦¨ à¦ªà§à¦¯à¦¾à¦¨à§‡à¦² à¦¥à§‡à¦•à§‡ à¦­à¦¿à¦¡à¦¿à¦“ à¦²à¦¿à¦™à§à¦• à¦¦à¦¿à¦¨</p>
+                <p className="text-sm font-semibold">ভিডিও ফাইল পাওয়া যায়নি</p>
+                <p className="text-xs mt-1 text-white/40">অ্যাডমিন প্যানেল থেকে ভিডিও লিঙ্ক দিন</p>
               </div>
             )}
           </div>
@@ -1047,7 +1048,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
               }}
             >
               <Maximize2 className="w-5 h-5" />
-              <span>ðŸ“± à¦«à§à¦² à¦¸à§à¦•à§à¦°à¦¿à¦¨ à¦•à¦°à§à¦¨ (Fullscreen Mode)</span>
+              <span>📱 ফুল স্ক্রিন করুন (Fullscreen Mode)</span>
             </button>
 
             {/* Sub Controls: Seek, Fit, Like */}
@@ -1058,14 +1059,14 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <Rewind className="w-3.5 h-3.5" />
-                  <span>-à§§à§¦ à¦¸à§‡.</span>
+                  <span>-১০ সে.</span>
                 </button>
                 <button
                   onClick={() => handleSeek(10)}
                   className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
                 >
                   <FastForward className="w-3.5 h-3.5" />
-                  <span>+à§§à§¦ à¦¸à§‡.</span>
+                  <span>+১০ সে.</span>
                 </button>
               </div>
 
@@ -1077,12 +1078,12 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   {videoFit === "contain" ? (
                     <>
                       <Expand className="w-3 h-3 text-pink-400" />
-                      <span>à¦¸à§à¦•à§à¦°à¦¿à¦¨ à¦«à¦¿à¦²</span>
+                      <span>স্ক্রিন ফিল</span>
                     </>
                   ) : (
                     <>
                       <Shrink className="w-3 h-3 text-pink-400" />
-                      <span>à¦¸à§à¦•à§à¦°à¦¿à¦¨ à¦«à¦¿à¦Ÿ</span>
+                      <span>স্ক্রিন ফিট</span>
                     </>
                   )}
                 </button>
@@ -1127,10 +1128,10 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleSimulatedExitReenter}
-            title="à¦…à§à¦¯à¦¾à¦ª à¦¥à§‡à¦•à§‡ à¦¬à§‡à¦° à¦¹à¦¯à¦¼à§‡ à¦ªà§à¦¨à¦°à¦¾à¦¯à¦¼ à¦ªà§à¦°à¦¬à§‡à¦¶ à¦Ÿà§‡à¦¸à§à¦Ÿ à¦•à¦°à§à¦¨ (à¦²à¦• à¦†à¦¬à¦¾à¦° à¦•à¦¾à¦°à§à¦¯à¦•à¦° à¦¹à¦¬à§‡)"
+            title="অ্যাপ থেকে বের হয়ে পুনরায় প্রবেশ টেস্ট করুন (লক আবার কার্যকর হবে)"
             className="p-1.5 px-2.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 text-pink-300 border border-pink-500/40 text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <span>ðŸšª à¦ªà§à¦°à¦¸à§à¦¥à¦¾à¦¨ à¦“ à¦°à¦¿-à¦à¦¨à§à¦Ÿà¦¾à¦°</span>
+            <span>🚪 প্রস্থান ও রি-এন্টার</span>
           </button>
           <button
             onClick={resetAllProgress}
@@ -1138,7 +1139,7 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
             className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs flex items-center gap-1 transition-colors cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">à¦°à¦¿à¦¸à§‡à¦Ÿ</span>
+            <span className="hidden sm:inline">রিসেট</span>
           </button>
           {onToggleFullscreen && (
             <button
@@ -1170,27 +1171,27 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
         >
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow">
-              {config.logo || "â™¥"}
+              {config.logo || "♥"}
             </div>
             <div className="text-left">
               <div
                 className="text-xs font-bold leading-tight"
                 style={{ color: theme.text }}
               >
-                {config.appName || "à¦«à¦¾à¦¨ à¦¹à¦¾à¦¬"}
+                {config.appName || "ফান হাব"}
               </div>
               <div className="text-[10px] text-white/50">bot</div>
             </div>
           </div>
 
           <div className="flex items-center gap-3 text-white/60 text-sm">
-            <span className="cursor-pointer hover:text-white text-xs">â€¢â€¢â€¢</span>
+            <span className="cursor-pointer hover:text-white text-xs">•••</span>
             <span
               onClick={handleSimulatedExitReenter}
-              title="à¦Ÿà§‡à¦²à¦¿à¦—à§à¦°à¦¾à¦® à¦®à¦¿à¦¨à¦¿ à¦…à§à¦¯à¦¾à¦ª à¦¬à¦¨à§à¦§ à¦“ à¦ªà§à¦¨à¦°à¦¾à¦¯à¦¼ à¦šà¦¾à¦²à§ à¦•à¦°à§à¦¨"
+              title="টেলিগ্রাম মিনি অ্যাপ বন্ধ ও পুনরায় চালু করুন"
               className="cursor-pointer hover:text-white text-xs font-bold p-1 rounded hover:bg-white/10"
             >
-              âœ•
+              ✕
             </span>
           </div>
         </div>
