@@ -23,6 +23,7 @@ import {
   RefreshCw,
   Expand,
   Shrink,
+  Pause,
 } from "lucide-react";
 import {
   normalizeMediaUrl,
@@ -90,6 +91,31 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
   const [videoError, setVideoError] = useState(false);
   const [playerMode, setPlayerMode] = useState<"standard" | "cloud_embed">("standard");
   const [loadedDurations, setLoadedDurations] = useState<Record<string, string>>({});
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [showCenterIcon, setShowCenterIcon] = useState(false);
+
+  const formatSeconds = (sec: number) => {
+    if (isNaN(sec) || !isFinite(sec) || sec < 0) return "0:00";
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s < 10 ? "0" : ""}${s}`;
+  };
+
+  const togglePlayPause = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!videoRef.current) return;
+    if (videoRef.current.paused) {
+      videoRef.current.play().catch(() => {});
+      setIsPlaying(true);
+    } else {
+      videoRef.current.pause();
+      setIsPlaying(false);
+    }
+    setShowCenterIcon(true);
+    setTimeout(() => setShowCenterIcon(false), 700);
+  };
 
   const handleNativeFullscreen = () => {
     const isEmbed = playerMode === "cloud_embed" || isTeraboxUrl(modalState.video?.src || "");
@@ -125,10 +151,12 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
 
   const handleSeek = (delta: number) => {
     if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(
+      const next = Math.max(
         0,
         Math.min(videoRef.current.duration || 0, videoRef.current.currentTime + delta)
       );
+      videoRef.current.currentTime = next;
+      setCurrentTime(next);
     }
   };
 
@@ -273,9 +301,16 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
   };
 
   const closeModal = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
     setVideoError(false);
     setVideoLoading(false);
     setPlayerMode("standard");
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+    setShowCenterIcon(false);
     setModalState({ type: "none" });
   };
 
@@ -999,35 +1034,75 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 </div>
               </div>
             ) : modalState.video.src ? (
-              <video
-                ref={videoRef}
-                src={normalizeMediaUrl(modalState.video.src)}
-                controls
-                autoPlay
-                preload="metadata"
-                playsInline
-                webkit-playsinline="true"
-                onLoadedData={() => setVideoLoading(false)}
-                onCanPlay={() => setVideoLoading(false)}
-                onPlaying={() => setVideoLoading(false)}
-                onTimeUpdate={() => {
-                  if (videoLoading) setVideoLoading(false);
-                }}
-                onError={() => {
-                  if (modalState.video && extractGoogleDriveId(modalState.video.src) && playerMode === "standard") {
-                    // Seamless auto-fallback to Google Drive cloud preview without showing any error
-                    setPlayerMode("cloud_embed");
-                    setVideoError(false);
+              <div
+                className="relative w-full h-full flex items-center justify-center cursor-pointer select-none overflow-hidden"
+                onClick={togglePlayPause}
+              >
+                <video
+                  ref={videoRef}
+                  src={normalizeMediaUrl(modalState.video.src)}
+                  autoPlay
+                  preload="metadata"
+                  playsInline
+                  webkit-playsinline="true"
+                  onLoadedData={() => setVideoLoading(false)}
+                  onLoadedMetadata={() => {
+                    if (videoRef.current) setDuration(videoRef.current.duration || 0);
+                  }}
+                  onCanPlay={() => setVideoLoading(false)}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onPlaying={() => {
                     setVideoLoading(false);
-                    return;
-                  }
-                  setVideoError(true);
-                  setVideoLoading(false);
-                }}
-                className={`w-full h-full max-h-[82vh] transition-all duration-200 ${
-                  videoFit === "cover" ? "object-cover" : "object-contain"
-                }`}
-              />
+                    setIsPlaying(true);
+                  }}
+                  onTimeUpdate={() => {
+                    if (videoLoading) setVideoLoading(false);
+                    if (videoRef.current) {
+                      setCurrentTime(videoRef.current.currentTime);
+                      if (!duration && videoRef.current.duration) {
+                        setDuration(videoRef.current.duration);
+                      }
+                    }
+                  }}
+                  onError={() => {
+                    if (modalState.video && extractGoogleDriveId(modalState.video.src) && playerMode === "standard") {
+                      // Seamless auto-fallback to Google Drive cloud preview without showing any error
+                      setPlayerMode("cloud_embed");
+                      setVideoError(false);
+                      setVideoLoading(false);
+                      return;
+                    }
+                    setVideoError(true);
+                    setVideoLoading(false);
+                  }}
+                  className={`w-full h-full max-h-[82vh] transition-all duration-200 pointer-events-none ${
+                    videoFit === "cover" ? "object-cover" : "object-contain"
+                  }`}
+                />
+
+                {/* Subtle Tap Indicator */}
+                {showCenterIcon && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                    <div className="w-14 h-14 rounded-full bg-black/70 backdrop-blur-md text-white flex items-center justify-center shadow-2xl border border-white/20 animate-in zoom-in duration-150">
+                      {isPlaying ? (
+                        <Play className="w-6 h-6 fill-current ml-0.5" />
+                      ) : (
+                        <Pause className="w-6 h-6 fill-current" />
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Paused State Indicator (Tap to play) */}
+                {!isPlaying && !showCenterIcon && (
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 bg-black/25">
+                    <div className="w-16 h-16 rounded-full bg-pink-600/90 text-white flex items-center justify-center shadow-2xl border border-white/30 backdrop-blur-sm">
+                      <Play className="w-7 h-7 fill-current ml-1" />
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="p-6 text-center text-white/60">
                 <Volume2 className="w-10 h-10 mx-auto mb-2 opacity-40" />
@@ -1039,6 +1114,31 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
 
           {/* Bottom Controls & Fullscreen Banner */}
           <div className="p-3 sm:p-4 bg-gradient-to-t from-black via-black/95 to-black/70 border-t border-white/10 shrink-0 z-20 space-y-2.5">
+            {/* Custom Sleek Timeline Scrubber (only for direct video) */}
+            {playerMode === "standard" && duration > 0 && (
+              <div className="flex items-center gap-2.5 w-full text-xs text-white/80 select-none px-1">
+                <span className="font-mono text-[11px] text-white/70 min-w-[32px] text-right">
+                  {formatSeconds(currentTime)}
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={duration || 100}
+                  step={0.1}
+                  value={currentTime}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    setCurrentTime(val);
+                    if (videoRef.current) videoRef.current.currentTime = val;
+                  }}
+                  className="flex-1 h-1.5 bg-white/20 hover:bg-white/30 rounded-lg appearance-none cursor-pointer accent-pink-500 transition-all"
+                />
+                <span className="font-mono text-[11px] text-white/50 min-w-[32px]">
+                  {formatSeconds(duration)}
+                </span>
+              </div>
+            )}
+
             {/* Primary Fullscreen Trigger Button */}
             <button
               onClick={handleNativeFullscreen}
@@ -1051,9 +1151,20 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
               <span>📱 ফুল স্ক্রিন করুন (Fullscreen Mode)</span>
             </button>
 
-            {/* Sub Controls: Seek, Fit, Like */}
+            {/* Sub Controls: Play/Pause, Seek, Fit, Like */}
             <div className="flex items-center justify-between text-xs text-white/70 px-1 pt-1">
               <div className="flex items-center gap-2">
+                <button
+                  onClick={togglePlayPause}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
+                  title={isPlaying ? "বিরতি (Pause)" : "চালু করুন (Play)"}
+                >
+                  {isPlaying ? (
+                    <Pause className="w-4 h-4 fill-current" />
+                  ) : (
+                    <Play className="w-4 h-4 fill-current ml-0.5" />
+                  )}
+                </button>
                 <button
                   onClick={() => handleSeek(-10)}
                   className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-colors"
