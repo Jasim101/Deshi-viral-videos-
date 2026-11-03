@@ -851,12 +851,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   }
 
   const sections: { id: AdminSection; label: string; icon: any }[] = [
-    { id: "general", label: "🎨 সাধারণ ও রঙ", icon: Palette },
-    { id: "menu", label: "📑 মেনু", icon: Menu },
-    { id: "cats", label: "🏷 ক্যাটাগরি", icon: Tags },
-    { id: "videos", label: "🎬 ভিডিও", icon: Video },
-    { id: "ads", label: "💰 বিজ্ঞাপন", icon: DollarSign },
-    { id: "security", label: "🔐 সিকিউরিটি", icon: ShieldCheck },
+    { id: "general", label: "সাধারণ ও রঙ", icon: Palette },
+    { id: "menu", label: "মেনু", icon: Menu },
+    { id: "cats", label: "ক্যাটাগরি", icon: Tags },
+    { id: "videos", label: "ভিডিও", icon: Video },
+    { id: "ads", label: "বিজ্ঞাপন", icon: DollarSign },
+    { id: "security", label: "সিকিউরিটি", icon: ShieldCheck },
   ];
 
   return (
@@ -915,7 +915,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               className="px-3 py-1.5 rounded-lg bg-pink-500/20 hover:bg-pink-500/30 border border-pink-500/40 text-xs font-bold text-pink-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>📱 অ্যাপে ফিরুন</span>
+              <span>অ্যাপে ফিরুন</span>
             </button>
           )}
           <a
