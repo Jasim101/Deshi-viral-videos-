@@ -118,10 +118,10 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
   };
 
   const handleNativeFullscreen = () => {
-    const isEmbed = playerMode === "cloud_embed" || isTeraboxUrl(modalState.video?.src || "");
-    const el = isEmbed
-      ? (playerContainerRef.current || iframeRef.current)
-      : (videoRef.current || playerContainerRef.current);
+    // In standard mode, always request fullscreen on the native video element for clean mobile playback
+    const el = playerMode === "standard" && videoRef.current
+      ? videoRef.current
+      : (playerContainerRef.current || videoRef.current);
     if (!el) return;
     try {
       if (document.fullscreenElement || (document as any).webkitFullscreenElement) {
@@ -234,10 +234,9 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
     recordStat(video.id, "view");
     setVideoError(false);
     const isTera = isTeraboxUrl(video.src);
-    const isDrive = Boolean(extractGoogleDriveId(video.src));
-    // For Terabox and Google Drive links, start directly in cloud_embed to prevent mobile stream errors & buffering stalls
-    setPlayerMode(isTera || isDrive ? "cloud_embed" : "standard");
-    setVideoLoading(!isTera && !isDrive);
+    // Terabox requires cloud embed. Google Drive, Dropbox, and CDN videos always play in standard clean HTML5 player!
+    setPlayerMode(isTera ? "cloud_embed" : "standard");
+    setVideoLoading(!isTera);
     setModalState({ type: "video_player", video });
   };
 
@@ -899,16 +898,16 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     setVideoLoading(false);
                     setPlayerMode(playerMode === "standard" ? "cloud_embed" : "standard");
                   }}
-                  className={`py-1 px-2 rounded-full text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all ${
-                    playerMode === "cloud_embed"
-                      ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                      : "bg-white/10 hover:bg-white/20 text-white/80 border border-white/10"
+                  className={`py-1 px-2.5 rounded-full text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                    playerMode === "standard"
+                      ? "bg-pink-600/20 text-pink-300 border border-pink-500/30 hover:bg-pink-600/30"
+                      : "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30"
                   }`}
                   title="প্লেয়ার মোড পরিবর্তন"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-pink-400" />
                   <span className="hidden sm:inline">
-                    {playerMode === "cloud_embed" ? "ক্লাউড প্লেয়ার" : "নরমাল প্লেয়ার"}
+                    {playerMode === "standard" ? "ক্লিন প্লেয়ার" : "ক্লাউড প্লেয়ার"}
                   </span>
                 </button>
               )}
@@ -985,9 +984,9 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     allowFullScreen
                     title={modalState.video.title}
                   />
-                  {/* Invisible Shield on top-right to prevent external tab popout if touched */}
+                  {/* Invisible Shield across full top header to prevent Google Drive external tab popout / navigation */}
                   <div
-                    className="absolute top-0 right-0 w-32 h-16 z-30 pointer-events-auto"
+                    className="absolute top-0 left-0 right-0 h-16 z-30 pointer-events-auto"
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
@@ -1008,14 +1007,12 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                   ইন্টারনেট সংযোগ চেক করুন অথবা নিচের বাটনে ক্লিক করে আবার চেষ্টা করুন।
                 </p>
 
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
                     onClick={() => {
                       setVideoError(false);
                       setVideoLoading(true);
-                      if (modalState.video && extractGoogleDriveId(modalState.video.src)) {
-                        setPlayerMode("cloud_embed");
-                      } else if (videoRef.current) {
+                      if (videoRef.current) {
                         videoRef.current.load();
                         videoRef.current.play().catch(() => {});
                       }
@@ -1025,6 +1022,18 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     <RefreshCw className="w-3.5 h-3.5" />
                     <span>আবার চেষ্টা করুন</span>
                   </button>
+                  {modalState.video && extractGoogleDriveId(modalState.video.src) && playerMode === "standard" && (
+                    <button
+                      onClick={() => {
+                        setVideoError(false);
+                        setVideoLoading(false);
+                        setPlayerMode("cloud_embed");
+                      }}
+                      className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-semibold cursor-pointer border border-amber-500/30 transition-all"
+                    >
+                      <span>⚡ বিকল্প ক্লাউড মোড</span>
+                    </button>
+                  )}
                   <button
                     onClick={closeModal}
                     className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold cursor-pointer transition-all"
@@ -1066,13 +1075,6 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                     }
                   }}
                   onError={() => {
-                    if (modalState.video && extractGoogleDriveId(modalState.video.src) && playerMode === "standard") {
-                      // Seamless auto-fallback to Google Drive cloud preview without showing any error
-                      setPlayerMode("cloud_embed");
-                      setVideoError(false);
-                      setVideoLoading(false);
-                      return;
-                    }
                     setVideoError(true);
                     setVideoLoading(false);
                   }}
